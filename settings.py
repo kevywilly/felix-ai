@@ -1,5 +1,8 @@
-from typing import List, Optional, Any, Dict
+import numpy as np
+from typing import List, Dict
 import os
+
+from src.utils.sensors import CameraSensorMode
 
 class TrainingType:
     OBSTACLE="OBSTACLE"
@@ -85,8 +88,8 @@ class AppSettings:
         body_length: float = 152/1000
         body_width: float = 126.00/1000
         encoder_resolution: int = 48*2 # gear ratio * 2 #int(1000/48)
-        max_robot_linear_velocity: float = 0.24
-        max_robot_angular_velocity: float = 1.8
+        max_linear_velocity: float = 0.20
+        max_angular_velocity: float = 0.85
     
     class Camera:
         width: int = 1640
@@ -100,6 +103,28 @@ class AppSettings:
 
     Training: TrainingProfile = obstacle3d_profile
 
+    DEFAULT_SENSOR_MODE = CameraSensorMode(3,1640,1232,29)
+
+    SENSOR_MODES = [
+        CameraSensorMode(0,3264,2464,21),
+        CameraSensorMode(1,3264,1848,28),
+        CameraSensorMode(2,1928,1080,29),
+        CameraSensorMode(3,1640,1232,29),
+        CameraSensorMode(4,1280,720,59),
+        CameraSensorMode(5,1280,720,120),
+    ]
+
+    CAMERA_MATRIX = np.array([
+        [848.721379, 0.000000, 939.509142],
+        [0.000000, 848.967602, 596.153547], 
+        [0.000000, 0.000000, 1.000000]
+    ])
+
+    DISTORTION_COEFFICIENTS = np.array(
+        [
+            [-0.296850, 0.061372, 0.002562, -0.002645, 0.000000]
+        ]
+    )
     debug: bool = False
 
 settings = AppSettings

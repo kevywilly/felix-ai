@@ -1,22 +1,26 @@
 from abc import abstractmethod
-from traitlets.config.configurable import SingletonConfigurable
+import traitlets
+from traitlets.config.configurable import Configurable
 import threading
 import time
 import atexit
 import logging
 
-class Node(SingletonConfigurable):
+class Node(Configurable):
+
     logger = logging.getLogger(__name__)
-    
-    def __init__(self, name: str, *args, **kwargs):
-        super(Node, self).__init__(*args, **kwargs)
+    spin_frequency = traitlets.Int(default_value=10).tag(config=True)
+
+
+    def __init__(self, **kwargs):
+        super(Node, self).__init__(**kwargs)
+        self.logger.info(f"Starting {self.__class__.__name__} Node")
         atexit.register(self._shutdown)
-        self._name = name
-        self._spin_frequency=10
+        
         self._running = False
         self._thread = None
         
-        self.logger.info(f"Loaded {self._name}...")
+        self.logger.info(f"Loaded {self.__class__.__name__}")
 
 
     @abstractmethod
@@ -27,11 +31,11 @@ class Node(SingletonConfigurable):
     def _spin(self):
         while self._running:
             self.spinner()
-            time.sleep(1.0/self._spin_frequency)
+            time.sleep(1.0/self.spin_frequency)
 
     
     def spin(self, frequency: int = 10):
-        self._spin_frequency = frequency
+        self.spin_frequency = frequency
         self._running = True
         self._thread = threading.Thread(target=self._spin)
         self._thread.start()
@@ -45,7 +49,7 @@ class Node(SingletonConfigurable):
         
         self._running = False
         if self._thread:
-            print(f'{self._name} shutting down')
+            print(f'{self.__class__.__name__} shutting down')
             self._thread.join()
             
         

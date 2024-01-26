@@ -1,13 +1,14 @@
-from nav_msgs.msg import Odometry
+
 from typing import Tuple
 import math
-from felix.common.settings import settings
+from src.interfaces.msg import Odometry
+from settings import settings
 
 
 class Kinematics:
 
     @staticmethod
-    def xywh_to_odom(x: int, y: int, w: int, h: int) -> Odometry:
+    def xywh_to_nav_target(x: int, y: int, w: int, h: int) -> Odometry:
         _x = float((x - w/2)/(w/2))
         _y = float((y - h/2)/(h/2))
 
@@ -20,11 +21,11 @@ class Kinematics:
 
         angle = float(math.radians(_x*settings.Camera.fov/2.0))
 
-
         odom = Odometry()
-        odom.twist.twist.linear.x = _vx
-        odom.twist.twist.angular.z = _vz
-        odom.pose.pose.orientation.z = angle
+        odom.twist.linear.x = _vx
+        odom.twist.angular.z = _vz
+        odom.pose.orientation.z = angle
+
         return odom
 
     @staticmethod

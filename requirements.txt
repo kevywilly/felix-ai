@@ -1,0 +1,4 @@
+pydantic
+traitlets
+flask
+flask_cors
