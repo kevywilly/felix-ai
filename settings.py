@@ -71,9 +71,9 @@ path_profile= TrainingProfile(
 
 class AppSettings:
 
-    class FileLocations:
-        data_root: str = '/home/nano/projects/felix-ai/data'
-        model_root: str = f'{data_root}/models'
+    class Data:
+        root: str = '/home/nano/projects/felix-ai/data'
+        driving_data_path = os.path.join(root,'driving_data')
 
     class Topics:
         raw_video: str = "/left/image_raw"

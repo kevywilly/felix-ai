@@ -15,6 +15,7 @@ class Controller(Node):
     cmd_vel = traitlets.Instance(Twist, allow_none=True)
     nav_target = traitlets.Instance(Odometry, allow_none=True)
     publish_frequency_hz = traitlets.Int(default_value=10, config=True)
+
     attitude_data = traitlets.Any()
     magnometer_data = traitlets.Any()
     gyroscope_data = traitlets.Any()
@@ -39,10 +40,10 @@ class Controller(Node):
 
 
     def get_imu_data(self):
-        self.attitude_data = np.array(self._bot.get_imu_attitude_data())
-        self.magnometer_data = np.array(self._bot.get_magnetometer_data())
-        self.gyroscope_data = np.array(self._bot.get_gyroscope_data())
-        self.accelerometer_data = np.array(self._bot.get_accelerometer_data())
+        self.attitude_data = Vector3.from_tuple(self._bot.get_imu_attitude_data())
+        self.magnometer_data = Vector3.from_tuple(self._bot.get_magnetometer_data())
+        self.gyroscope_data = Vector3.from_tuple(self._bot.get_gyroscope_data())
+        self.accelerometer_data = Vector3.from_tuple(self._bot.get_accelerometer_data())
         self.motion_data = Vector3.from_tuple(self._bot.get_motion_data())
 
     def spinner(self):

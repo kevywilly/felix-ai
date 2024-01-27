@@ -30,10 +30,10 @@ class JoystickUpdateEvent(BaseModel):
                 angle = math.degrees(math.atan2(self.x,self.y))
                 x = self.x * dist
                 y = self.y * dist
-                if abs(angle) <= 20 or abs(angle) >=160:
+                if abs(angle) <= 10 or abs(angle) >=170:
                     # forward / backward
                     t.linear.x = y
-                elif abs(angle) <= 80 or abs(angle) >=100:
+                elif abs(angle) <= 85 or abs(angle) >=95:
                     # turn
                     t.linear.x = y
                     t.angular.z = -x

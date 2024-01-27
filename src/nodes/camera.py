@@ -17,7 +17,7 @@ class Camera(Node):
     def __init__(self, **kwargs):
         super(Camera, self).__init__(**kwargs)
         self.sensor_mode = settings.DEFAULT_SENSOR_MODE
-        self.spin_frequency = self.sensor_mode.framerate
+        self.frequency = self.sensor_mode.framerate
         self.cap = self._init_camera()
         atexit.register(self.shutdown)
 
@@ -57,6 +57,7 @@ class Camera(Node):
     def shutdown(self):
         if self.cap:
             self.cap.release()
+
         
 
 

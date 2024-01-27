@@ -1,6 +1,5 @@
-import math
-from math import atan, atan2
-from turtle import distance
+#!/usr/bin/python3
+
 from typing import Dict
 from src.interfaces.joystick import JoystickEventType, JoystickUpdateEvent
 from src.utils.kinematics import Kinematics
@@ -8,11 +7,8 @@ from src.interfaces.msg import Odometry, Twist, Vector3
 from src.nodes.robot import Robot
 import logging
 import os
-import time
-import flask
 from flask_cors import CORS
 from flask import Flask, Response, jsonify, request
-import cv2
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
@@ -24,7 +20,8 @@ cors = CORS(app, resource={
     }
 })
 
-app.robot: Robot = Robot()
+
+
 
 def _get_stream():
     while True:
@@ -96,4 +93,6 @@ def api_joystick():
     
 
 if __name__ == "__main__":
+    app.robot: Robot = Robot(capture_when_driving=True)
+    app.robot.spin(frequency=0.5)
     app.run(host='0.0.0.0', debug=False)
