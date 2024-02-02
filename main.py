@@ -93,6 +93,6 @@ def api_joystick():
     
 
 if __name__ == "__main__":
-    app.robot: Robot = Robot(capture_when_driving=True)
+    app.robot: Robot = Robot(capture_when_driving=False)
     app.robot.spin(frequency=0.5)
     app.run(host='0.0.0.0', debug=False)

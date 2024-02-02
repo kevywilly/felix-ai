@@ -24,7 +24,7 @@ class Controller(Node):
 
     def __init__(self, **kwargs):
         super(Controller, self).__init__(**kwargs)
-        self._bot = Rosmaster(car_type=2, com="/dev/ttyUSB0")
+        self._bot = Rosmaster(car_type=2, com=settings.Robot.yaboom_port)
         self._bot.create_receive_threading()
         self._running = False
         self._cmd_vel: Optional[Twist] = None
@@ -61,11 +61,19 @@ class Controller(Node):
     
     def _apply_cmd_vel(self):
         if self.cmd_vel:
+            """
+            self._bot.set_car_motion(
+                self._cmd_vel.linear.x, 
+                self._cmd_vel.linear.y, 
+                self._cmd_vel.angular.z
+            )
+            """
             self._bot.set_car_motion(
                 self._cmd_vel.linear.x*settings.Robot.max_linear_velocity, 
                 self._cmd_vel.linear.y*settings.Robot.max_linear_velocity, 
                 self._cmd_vel.angular.z*settings.Robot.max_angular_velocity
             )
+            
         else:
             self.stop()
 
@@ -97,7 +105,7 @@ class Controller(Node):
     @traitlets.observe('cmd_vel')
     def _cmd_val_change(self, change):
         if change.new:
-            self.logger.info(f'cmd_vel changed to: {change.new}')
+            # self.logger.info(f'cmd_vel changed to: {change.new}')
             self._cmd_vel = deepcopy(change["new"])
             self._nav_target = None
             #self.cmd_vel = None
@@ -106,7 +114,7 @@ class Controller(Node):
     @traitlets.observe('nav_target')
     def _nav_target_change(self, change):
         if change.new:
-            self.logger.info(f'nav_target changed to: {change.new}')
+            # self.logger.info(f'nav_target changed to: {change.new}')
             self._nav_target = deepcopy(change["new"])
             self.nav_target = None
             self._cmd_vel = None

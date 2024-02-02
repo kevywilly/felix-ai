@@ -40,7 +40,7 @@ class JoystickUpdateEvent(BaseModel):
                 else:
                     # slide
                     # t.linear.x = y
-                    t.linear.y = x
+                    t.linear.y = -x
             except Exception as ex:
                 t = Twist()
                 print(ex.__str__())

@@ -35,12 +35,12 @@ class Robot(Node):
     def _make_folders(self):
         try:
             os.makedirs(settings.Data.driving_data_path)
-        except FileExistsError:
+        except:
             pass
 
     def _setup_subscriptions(self):
         traitlets.dlink((self._camera, 'value'), (self.image, 'value'), transform=ImageUtils.bgr8_to_jpeg)
-        self._controller.observe(self._motion_changed, names=["motion_data"])
+        # self._controller.observe(self._motion_changed, names=["motion_data"])
 
 
     def _remove_subscriptions(self):
@@ -49,6 +49,7 @@ class Robot(Node):
 
 
     def _motion_changed(self, changed):
+        self.logger.info("motion")
         if changed.new != changed.old:
             self.logger.info(changed.new)
         
