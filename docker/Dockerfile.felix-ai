@@ -16,7 +16,6 @@ RUN pip3 install --no-cache-dir --verbose \
   flask \
   flask_cors \
   pandas \
-  pydantic \
   traitlets
 
 FROM stage1 as stage2

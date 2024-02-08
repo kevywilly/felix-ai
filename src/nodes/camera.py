@@ -1,13 +1,10 @@
-import threading
 import traitlets
 import cv2
 from cv2 import VideoCapture
 from traitlets.config.configurable import SingletonConfigurable
 from settings import settings
-import atexit
 import numpy as np
 from src.nodes.node import Node
-
 
 class Camera(Node):
 
@@ -19,7 +16,8 @@ class Camera(Node):
         self.sensor_mode = settings.DEFAULT_SENSOR_MODE
         self.frequency = self.sensor_mode.framerate
         self.cap = self._init_camera()
-        atexit.register(self.shutdown)
+
+        self.loaded()
 
     def _init_camera(self) -> VideoCapture:
         cap = VideoCapture(self.sensor_mode.to_nvargus_string(self.sensor_id))
@@ -39,6 +37,9 @@ class Camera(Node):
     
     
     def _read(self, cap: VideoCapture):
+        
+        if not cap.isOpened():
+            return
         
         ret, frame = cap.read()
 

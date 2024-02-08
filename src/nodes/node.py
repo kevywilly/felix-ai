@@ -8,22 +8,33 @@ import logging
 
 class Node(Configurable):
 
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('FELIX')
     frequency = traitlets.Float(default_value=10).tag(config=True)
+    _running = traitlets.Bool(default_value=False)
 
     def __init__(self, **kwargs):
         super(Node, self).__init__(**kwargs)
-        self.logger.info(f"Starting {self.__class__.__name__} Node")
-        atexit.register(self._shutdown)
-        
-        self._running = False
+        print("\n")
+        self.logger.info(f"******************************************************************\n")
+        self.logger.info(f"*\tStarting {self.__class__.__name__} Node @ {self.frequency}Hz\n")
+        self.logger.info(f"******************************************************************\n")
         self._thread = None
         
-        self.logger.info(f"Loaded {self.__class__.__name__}")
 
+        atexit.register(self._shutdown)
+
+    def loaded(self):
+        print("\n")
+        self.logger.info(f"******************************************************************\n")
+        self.logger.info(f"*\t{self.__class__.__name__} Node is up\n")
+        self.logger.info(f"******************************************************************\n")
 
     @abstractmethod
     def spinner(self):
+        pass
+
+    @abstractmethod
+    def shutdown(self):
         pass
 
     
@@ -45,7 +56,7 @@ class Node(Configurable):
 
 
     def _shutdown(self):
-        
+        self.shutdown()
         self._running = False
         if self._thread:
             print(f'{self.__class__.__name__} shutting down')

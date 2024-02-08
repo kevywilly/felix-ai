@@ -1,6 +1,4 @@
-
-
-class CameraSensorMode:
+class CameraSensor:
     def __init__(self, id: int, width: int, height: int, framerate: int):
         self.id = id
         self.width = width
@@ -18,3 +16,18 @@ class CameraSensorMode:
                 self.framerate
                 )
     
+
+    @classmethod
+    def modes(cls):
+        return [
+            cls(0,3264,2464,21),
+            cls(1,3264,1848,28),
+            cls(2,1928,1080,29),
+            cls(3,1640,1232,29),
+            cls(4,1280,720,59),
+            cls(5,1280,720,120)
+        ]
+
+    @classmethod
+    def mode(cls, index):
+        return cls.modes()[index]
