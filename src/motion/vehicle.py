@@ -2,22 +2,26 @@ from ast import Tuple
 import math
 from abc import ABC, abstractmethod
 import numpy as np
+from src.motion.utils import scale
 
+# https://gm0.org/en/latest/docs/software/concepts/kinematics.html
 class Vehicle(ABC):
     def __init__(self,
         wheel_radius: float,
         wheel_base: float,
         track_width: float,
-        max_rpm: int,
         gear_ratio: float,
+        max_rpm: int,
+        min_rpm: int = 0,
+        motor_voltage=12,
         yaboom_port: str = '/dev/myserial', 
         fov: int = 160,
-        motor_voltage=12
     ):
         self.wheel_radius = wheel_radius
         self.wheel_base = wheel_base
         self.track_width = track_width
         self.max_rpm = max_rpm
+        self.min_rpm = min_rpm
         self.gear_ratio = gear_ratio
         self.yaboom_port = yaboom_port
         self.fov = fov
@@ -40,13 +44,13 @@ class Vehicle(ABC):
     def inverse_kinematics(self, wheel_velocities: np.ndarray) -> Tuple(3):
         pass
     
-    def _calc_max_linear_velocity(self)-> float:
-        v_all = self.rpm_to_mps(self.max_rpm)
+    def _calc_max_linear_velocity(self, rpm)-> float:
+        v_all = self.rpm_to_mps(rpm)
         v, _, _ = self.inverse_kinematics(np.array([v_all, v_all, v_all, v_all]))
         return v
     
-    def _calc_max_angular_velocity(self) -> float:
-        v_all = self.rpm_to_mps(self.max_rpm)
+    def _calc_max_angular_velocity(self, rpm) -> float:
+        v_all = self.rpm_to_mps(rpm)
         _, _, omega = self.inverse_kinematics(np.array([-v_all, v_all, -v_all, v_all]))
         return omega
 
@@ -55,16 +59,17 @@ class Vehicle(ABC):
         mps = rps*self.meters_per_rotation
         
         return mps
-    
-    def mps_to_rpms(self, mps: np.ndarray) -> np.ndarray:
+
+
+    def mps_to_rpm(self, mps: np.ndarray) -> np.ndarray:
         rps = mps/self.meters_per_rotation
         rpm = rps*60
         return rpm
     
     def mps_to_motor_power(self, mps: np.ndarray) -> np.ndarray:
-        power = self.mps_to_rpms(mps)/self.max_rpm
-        power[power > 1.0]=1.0
-        return power
+        power = 100*self.mps_to_rpm(mps)/self.max_rpm
+        return np.vectorize(lambda t: min(max(t,-100),100))(power)
+       
 
 class MecanumVehicle(Vehicle):
     def __init__(self, *args, **kwargs):
@@ -79,9 +84,8 @@ class MecanumVehicle(Vehicle):
             [-1,1,-1,1]
         ])
 
-        self.IK_DIVISOR = np.array([4,4,4*(self.L+self.W)])
+        self.IK_DIVISOR = np.array([4,4,4*(self.W)])
 
-        
 
     def forward_kinematics(self, v_x, v_y, omega) -> np.ndarray:
         """
@@ -98,10 +102,10 @@ class MecanumVehicle(Vehicle):
         - v_rl: Velocity of the rear-left wheel (m/s)
         - v_rr: Velocity of the rear-right wheel (m/s)
         """
-        v_fl = v_x - v_y - (self.L + self.W) * omega
-        v_fr = v_x + v_y + (self.L + self.W) * omega
-        v_rl = v_x + v_y - (self.L + self.W) * omega
-        v_rr = v_x - v_y + (self.L + self.W) * omega
+        v_fl = v_x - v_y - self.W * omega
+        v_fr = v_x + v_y + self.W * omega
+        v_rl = v_x + v_y - self.W * omega
+        v_rr = v_x - v_y + self.W * omega
 
         return np.array([v_fl, v_fr, v_rl, v_rr])
 

@@ -1,9 +1,7 @@
 import traitlets
 import cv2
 from cv2 import VideoCapture
-from traitlets.config.configurable import SingletonConfigurable
 from settings import settings
-import numpy as np
 from src.nodes.node import Node
 
 class Camera(Node):

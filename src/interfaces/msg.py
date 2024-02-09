@@ -43,7 +43,7 @@ class Vector3(DataModel):
         return f'{self.x},{self.y},{self.z}'
     
     def __repr__(self):
-        return f'<vector x:{self.x} y:{self.y} z:{self.z}>'
+        return f'[{self.x:.3f},{self.y:.3f},{self.z:.3f}]'
     
     
 class Vector4(DataModel):
@@ -72,7 +72,7 @@ class Vector4(DataModel):
         return f'{self.x},{self.y},{self.z},{self.z}'
 
     def __repr__(self):
-        return f'<vector x:{self.x} y:{self.y} z:{self.z} w:{self.w}>'
+        return f'[{self.x:.3f},{self.y:.3f},{self.z:.3f},{self.w:.3f}]'
     
     def dict(self):
         return {'x' : self.x, 'y': self.y, 'z': self.z, 'w': self.w}
@@ -125,7 +125,7 @@ class Twist(DataModel):
         return {'linear' : self.linear.dict(), 'angular': self.angular.dict()}
     
     def __repr__(self):
-        return f'<Twist linear: {self.linear} angular: {self.angular}>'
+        return f'[[{self.linear}],[{self.angular}]]'
         
 
 class Pose(DataModel):

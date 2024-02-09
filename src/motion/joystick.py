@@ -32,14 +32,19 @@ class JoystickUpdateEvent:
 
     def get_twist(self) -> Twist:
         if self.type == JoystickEventType.move:
+
+            dist = self.distance/100.0
+            x = self.x * dist
+            y = self.y * dist
+            
             try:
                 t = Twist()
-                dist = self.distance/100.0
+                
                 angle = math.degrees(math.atan2(self.x,self.y))
-                x = self.x * dist
-                y = self.y * dist
+                
                 if abs(angle) <= 5 or abs(angle) >=175:
                     # forward / backward
+                    t.angular.z = 0
                     t.linear.x = y
                 else: 
                     # turn

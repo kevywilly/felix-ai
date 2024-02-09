@@ -5,12 +5,24 @@ from src.motion.vehicle import MecanumVehicle
 
 from src.vision.sensors import CameraSensor
 
+import yaml
+
+## define custom tag handler
+def join(loader, node):
+    seq = loader.construct_sequence(node)
+    return ''.join([str(i) for i in seq])
+
+## register the tag handler
+yaml.add_constructor('!join', join)
+yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
+
+ 
 
 POPPA = MecanumVehicle(
     wheel_radius=0.0485,
     wheel_base=0.15,
     track_width=0.229,
-    max_rpm=205,
+    max_rpm=350,
     gear_ratio=1/56,
     yaboom_port='/dev/myserial',
     motor_voltage=12
@@ -71,18 +83,48 @@ class AppSettings:
         tags_path = os.path.join(data_root,"training/tags")
         driving_data_path = os.path.join(data_root, "driving_data")
 
-    class Topics:
-        raw_video: str = "/camera/image_raw"
-        cmd_vel: str = "/cmd_vel"
-        autodrive: str = "/autodrive"
-        cmd_nav: str = "/cmd_nav"
+    def __init__(self):
+        config = self.load_config()
 
-    Vehicle = curr_robot
-    DEFAULT_SENSOR_MODE = CameraSensor.mode(3)
-    DISTORTION_COEFFICIENTS = dist_coefficients
-    CAMERA_MATRIX = camera_matrix
+        self.Training.data_root = config.get('training').get('data_root')
+        self.Training.tags_path = config.get('training').get('tags_path')
+        self.Training.navigation_path = config.get('training').get('navigation_path')
+        self.Training.model_root = config.get('training').get('model_root')
+        self.Training.driving_data_path = config.get('training').get('driving_data_path')
+        print(self.Training.model_root)
 
-    debug: bool = False
+        self.VEHICLE = MecanumVehicle(
+            min_rpm = config.get('vehicle').get('min_rpm',0),
+            max_rpm = config.get('vehicle').get('max_rpm',205),
+            wheel_radius = config.get('vehicle').get('wheel_radius'),
+            wheel_base = config.get('vehicle').get('wheel_base',0),
+            track_width = config.get('vehicle').get('track_width',0),
+            gear_ratio = config.get('vehicle').get('gear_ratio',0),
+            motor_voltage = config.get('vehicle').get('motor_voltage',0),
+            yaboom_port=config.get('peripherals').get('yaboom')
+        )
+        
+        self.DEFAULT_SENSOR_MODE = CameraSensor.mode(config.get('camera_sensor_mode',3))
+        
+        self.DISTORTION_COEFFICIENTS = np.array(
+            config.get('camera_calibration')
+            .get('distortion_coefficients')
+            .get('data')
+        ).reshape(1,5)
+        
+        self.CAMERA_MATRIX = np.array(
+            config.get('camera_calibration')
+            .get('camera_matrix')
+            .get('data')
+        ).reshape(3,3)
 
-settings = AppSettings
+        debug: bool = config.get('debug')
+
+    
+
+    def load_config(self) -> Dict:
+        with open('config/orin.yml','r') as f:
+            return yaml.safe_load(f)
+
+settings = AppSettings()
 

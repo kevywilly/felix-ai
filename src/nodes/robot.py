@@ -29,7 +29,7 @@ class Robot(Node):
 
         # initialize nodes
         self._camera: Camera = Camera()
-        self._controller: Controller = Controller(vehicle=settings.Vehicle, frequency=30)
+        self._controller: Controller = Controller(vehicle=settings.VEHICLE, frequency=30)
 
         # start nodes
         self._controller.spin()

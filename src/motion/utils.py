@@ -20,3 +20,11 @@ def twist_from_json(data: Optional[Dict]) -> Twist:
     t.angular.z = float(data['angular']['z'])
 
     return t
+
+def scale_abs(x, abs_in_min, abs_in_max, abs_out_min, abs_out_max, keep_zero=True):
+    if x == 0 and keep_zero:
+        return x
+    return scale(abs(x), abs_in_min, abs_in_max, abs_out_min, abs_out_max) * (-1 if x != abs(x) else 1)
+
+def scale(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;

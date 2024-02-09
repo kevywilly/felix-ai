@@ -57,6 +57,7 @@ class ImageCollector:
 
     def get_tags(self):
         d = {}
+        print(settings.Training.tags_path)
         for p in os.listdir(settings.Training.tags_path):
             d[p.lower()] = len(os.listdir(os.path.join(settings.Training.tags_path,p)))
         return d

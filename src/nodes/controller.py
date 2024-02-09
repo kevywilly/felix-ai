@@ -11,6 +11,7 @@ import numpy as np
 import time
 from copy import deepcopy
 from settings import settings
+from src.motion.utils import scale, scale_abs
 
 class Controller(Node):
 
@@ -42,8 +43,11 @@ class Controller(Node):
 
         self.angle_delta = 0
         self.camera_image = None
-        self.max_linear_velocity = self.vehicle._calc_max_linear_velocity()
-        self.max_angular_velocity = self.vehicle._calc_max_angular_velocity()
+        self.max_linear_velocity = self.vehicle._calc_max_linear_velocity(self.vehicle.max_rpm)
+        self.max_angular_velocity = self.vehicle._calc_max_angular_velocity(self.vehicle.max_rpm)
+        self.min_linear_velocity = self.vehicle._calc_max_linear_velocity(self.vehicle.min_rpm)
+        self.min_angular_velocity = self.vehicle._calc_max_angular_velocity(self.vehicle.min_rpm)
+        
         self.last_cmd = None
 
         self.autodriver = BinaryObstacleAvoider(model_file=settings.Training.model_root+"/checkpoints/binary_obstacle_avoidance.pth")
@@ -59,9 +63,11 @@ class Controller(Node):
 
     def spinner(self):
         self.get_imu_data()
+        if self.motion_data.x != 0 or self.motion_data.y != 0:
+            self.logger.info(f'motion: \t{self.motion_data} \ncmd: \t{self.last_cmd}')
         if self.autodrive and self.camera_image is not None:
             prediction, self.cmd_vel = self.autodriver.predict(self.camera_image)
-            self.logger.info(f"Got prediction: {prediction}")
+            #self.logger.info(f"Got prediction: {prediction}")
 
         
 
@@ -71,16 +77,43 @@ class Controller(Node):
         """
     
     def stop(self):
-        self._bot.set_car_motion(0,0,0)
+        self._bot.set_motor(0,0,0,0)
+
+     
+    def _scale_cmd_vel(self, cmd: Twist):
+        vx = scale_abs(cmd.linear.x, 0, 1.0, self.min_linear_velocity, self.max_linear_velocity)
+        vy = scale_abs(cmd.linear.y, 0, 1.0, self.min_linear_velocity, self.max_linear_velocity)
+        omega = scale_abs(cmd.angular.z, 0, 1.0, self.min_angular_velocity, self.max_angular_velocity)
+        return vx, vy, omega
+    
+    def _apply_cmd_vel(self, cmd: Twist):
+    
+        vx, vy, omega = self._scale_cmd_vel(cmd)
         
     
-    def _apply_cmd_vel(self, cmd):
-    
-        self._bot.set_car_motion(
-            cmd.linear.x*self.max_linear_velocity, 
-            cmd.linear.y*self.max_linear_velocity, 
-            cmd.angular.z*self.max_angular_velocity
+        vel = self.vehicle.forward_kinematics(
+            vx, vy, omega
         )
+
+        pow = self.vehicle.mps_to_motor_power(vel)
+
+        #print('velocity', vx,vy,omega)
+        print('power', pow)
+       
+        self._bot.set_motor(
+            pow[0], pow[2], pow[1], pow[3]
+        )
+      
+        self.last_cmd = cmd
+        
+
+    def _apply_cmd_vel2(self, cmd):
+    
+        vx, vy, omega = self._scale_cmd_vel(cmd)
+        print(vx,vy,omega)
+       
+
+        self._bot.set_car_motion(vx, vy, omega)
         self.last_cmd = cmd
        
 
@@ -101,10 +134,8 @@ class Controller(Node):
 
     def _apply_nav_target(self):
         if self.nav_target:
-            self._bot.set_car_motion(
-                self.nav_target.twist.linear.x*self.max_linear_velocity, 
-                self.nav_target.twist.linear.y*self.max_linear_velocity, 
-                self.nav_target.twist.angular.z*self.max_angular_velocity
+            self._apply_cmd_vel(
+                self.nav_target.twist
             )
             self._start_nav()
         else:
