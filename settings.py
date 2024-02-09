@@ -2,6 +2,7 @@ import numpy as np
 from typing import List, Dict
 import os
 from src.motion.vehicle import MecanumVehicle
+from src.utils.format import comment_block
 
 from src.vision.sensors import CameraSensor
 
@@ -17,6 +18,7 @@ yaml.add_constructor('!join', join)
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
 
 ROBOT = os.getenv('ROBOT')
+print(comment_block(f'Robot = {ROBOT}'))
 
 if not(ROBOT):
     raise Exception("Environment variable ROBOT not set, use either ROBOT=felixV1 or ROBOT=felixV2")
@@ -34,8 +36,9 @@ class AppSettings:
 
 
     def __init__(self, config_file):
-        print("==== loading app settings ====")
 
+        print(comment_block('Loading App Settings'))
+    
         config = self.load_config(config_file)
 
         self.TRAINING = TrainingConfig(config)
