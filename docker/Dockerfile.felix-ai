@@ -1,4 +1,4 @@
-FROM ai-base:r35.4.1 as stage1
+FROM ai-base:latest as stage1
 
 ENV CUDA_HOME=/usr/local/cuda
 

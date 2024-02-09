@@ -13,12 +13,12 @@ class ImageCollector:
 
     def _make_folders(self):
         try:
-            os.makedirs(settings.Training.tags_path)
+            os.makedirs(settings.TRAINING.tags_path)
         except FileExistsError:
             pass
 
         try:
-            os.makedirs(settings.Training.navigation_path)
+            os.makedirs(settings.TRAINING.navigation_path)
         except FileExistsError:
             pass
 
@@ -51,22 +51,22 @@ class ImageCollector:
     
 
     def save_tag(self, image, tag) -> int:
-        self.save_image(image, os.path.join(settings.Training.tags_path,tag.lower()), self.filetime('jpg'))
+        self.save_image(image, os.path.join(settings.TRAINING.tags_path,tag.lower()), self.filetime('jpg'))
         return self.get_tags()
     
 
     def get_tags(self):
         d = {}
-        print(settings.Training.tags_path)
-        for p in os.listdir(settings.Training.tags_path):
-            d[p.lower()] = len(os.listdir(os.path.join(settings.Training.tags_path,p)))
+        
+        for p in os.listdir(settings.TRAINING.tags_path):
+            d[p.lower()] = len(os.listdir(os.path.join(settings.TRAINING.tags_path,p)))
         return d
             
     def save_navigation_image(self, x: int, y:int, width:int, height: int, image) -> str:
         name = 'xy_%03d_%03d_%03d_%03d_%s' % (x, y, width, height, self.filetime('jpg'))
         return self.save_image(
             image=image,
-            path=settings.Training.navigation_path,
+            path=settings.TRAINING.navigation_path,
             filename=name
         )
 

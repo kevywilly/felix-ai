@@ -1,0 +1,45 @@
+debug: False
+vehicle:
+  min_rpm: 10
+  max_rpm: 90
+  wheel_radius: 0.0325
+  wheel_base: 0.14
+  track_width: 0.155
+  gear_ratio: 48
+  motor_voltage: 5
+peripherals:
+  yaboom: /dev/myserial
+training:
+  data_root:          &root /felix-ai/data
+  model_root:        !join [*root,/models]
+  navigation_path:    !join [*root,/training/navigation]
+  tags_path:          !join [*root,/training/tags]
+  driving_data_path:  !join [*root,/training/driving]
+camera_sensor_mode: 3
+camera_calibration: 
+  image_width: 1640
+  image_height: 1232
+  camera_name: narrow_stereo
+  camera_matrix:
+    rows: 3
+    cols: 3
+    data: [848.72138,   0.     , 939.50914,
+            0.     , 848.9676 , 596.15355,
+            0.     ,   0.     ,   1.     ]
+  distortion_model: plumb_bob
+  distortion_coefficients:
+    rows: 1
+    cols: 5
+    data: [-0.296850, 0.061372, 0.002562, -0.002645, 0.000000]
+  rectification_matrix:
+    rows: 3
+    cols: 3
+    data: [1., 0., 0.,
+          0., 1., 0.,
+          0., 0., 1.]
+  projection_matrix:
+    rows: 3
+    cols: 4
+    data: [592.23242,   0.     , 942.25807,   0.     ,
+            0.     , 670.8067 , 591.34854,   0.     ,
+            0.     ,   0.     ,   1.     ,   0.     ]

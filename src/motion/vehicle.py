@@ -41,7 +41,7 @@ class Vehicle(ABC):
         pass
     
     @abstractmethod
-    def inverse_kinematics(self, wheel_velocities: np.ndarray) -> Tuple(3):
+    def inverse_kinematics(self, wheel_velocities: np.ndarray) -> np.ndarray:
         pass
     
     def _calc_max_linear_velocity(self, rpm)-> float:

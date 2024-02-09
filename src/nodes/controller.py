@@ -50,7 +50,7 @@ class Controller(Node):
         
         self.last_cmd = None
 
-        self.autodriver = BinaryObstacleAvoider(model_file=settings.Training.model_root+"/checkpoints/binary_obstacle_avoidance.pth")
+        self.autodriver = BinaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/binary_obstacle_avoidance.pth")
 
         self.loaded()
 

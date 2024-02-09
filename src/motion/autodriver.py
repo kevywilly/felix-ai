@@ -8,16 +8,26 @@ import torch.nn.functional as F
 import time
 from settings import settings
 from src.vision.image import ImageUtils
-
-torch.hub.set_dir(settings.Training.model_root)
+import logging
+torch.hub.set_dir(settings.TRAINING.model_root)
 
 class AutoDriver(ABC):
+
+    logger = logging.getLogger('AUTODRIVE')
+
     def __init__(self, model_file):
         self.device = torch.device('cuda' if torch.has_cuda else 'cpu')
         self.model_file = model_file
+        self.model_loaded = False
         
     def load_state_dict(self, model):
-        model.load_state_dict(torch.load(self.model_file))
+        try:
+            model.load_state_dict(torch.load(self.model_file))
+            self.model_loaded = True
+        except:
+            self.logger.warn(f'======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
+            self.model_loaded = False
+            
 
     @abstractmethod
     def predict(self, input) -> Twist:
@@ -35,7 +45,7 @@ class BinaryObstacleAvoider(AutoDriver):
         super().__init__(model_file)
         self.linear = linear
         self.angular = angular
-        self.model = torchvision.models.alexnet(weights=None)
+        self.model = torchvision.models.alexnet(pretrained=False)
         self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, 2)
         self.load_state_dict(self.model)
         self.model = self.model.to(self.device)
@@ -51,6 +61,10 @@ class BinaryObstacleAvoider(AutoDriver):
         return x
 
     def predict(self, input) -> Twist:
+
+        if not self.model_loaded:
+            return Twist()
+        
         x = self.preprocess(input)
         y = self.model(x)
         

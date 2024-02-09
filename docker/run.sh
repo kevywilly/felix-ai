@@ -47,13 +47,12 @@ if [ $ARCH = "aarch64" ]; then
 	set -x
 
 	#--volume $ROOT/data:/data \
-	$SUDO docker run -d --runtime nvidia -it --rm --network host \
+	$SUDO docker run -d --runtime nvidia -it --rm --network host -e ROBOT=${ROBOT} \
 		--name felix-ai \
 		--volume /tmp/argus_socket:/tmp/argus_socket \
 		--volume /etc/enctune.conf:/etc/enctune.conf \
 		--volume /etc/nv_tegra_release:/etc/nv_tegra_release \
 		--volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
-		--volume ${HOME}/projects/felix:/felix \
 		--volume ${HOME}/projects/felix-ai:/felix-ai \
 		--device /dev/snd \
 		--device /dev/bus/usb \

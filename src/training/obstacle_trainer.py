@@ -9,7 +9,7 @@ from settings import settings
 
 import os
 
-torch.hub.set_dir(settings.Training.model_root)
+torch.hub.set_dir(settings.TRAINING.model_root)
 
 from abc import ABC, abstractmethod
 
@@ -68,7 +68,7 @@ class ObstacleTrainer(Trainer):
 
         model_exists = os.path.exists(self.model_file) 
 
-        model = models.alexnet(weights=None if model_exists else models.AlexNet_Weights.DEFAULT)
+        model = models.alexnet(pretrained=False if model_exists else True)
         model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, self.num_categories)
         if model_exists:
             model.load_state_dict(torch.load(self.model_file))

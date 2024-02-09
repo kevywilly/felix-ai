@@ -155,7 +155,7 @@ class Robot(Node):
         
         filepath = self._image_collector.save_image(
             self.get_image(), 
-            path = settings.Training.driving_data_path, 
+            path = settings.TRAINING.driving_data_path, 
             filename=ImageCollector.filetime('jpg')
         )
 
