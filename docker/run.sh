@@ -47,7 +47,8 @@ if [ $ARCH = "aarch64" ]; then
 	set -x
 
 	#--volume $ROOT/data:/data \
-	$SUDO docker run -d --runtime nvidia -it --rm --network host -e ROBOT=${ROBOT} \
+	#$SUDO docker run --runtime nvidia -it --rm --network host -e ROBOT=${ROBOT} \
+	$SUDO docker run --runtime nvidia --rm --network host -e ROBOT=${ROBOT} \
 		--name felix-ai \
 		--volume /tmp/argus_socket:/tmp/argus_socket \
 		--volume /etc/enctune.conf:/etc/enctune.conf \

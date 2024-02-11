@@ -9,6 +9,7 @@ vehicle:
   motor_voltage: 5
 peripherals:
   yaboom: /dev/myserial
+  joy_dampening_mode: 1
 training:
   data_root:          &root /felix-ai/data
   model_root:        !join [*root,/models]

@@ -41,6 +41,8 @@ class AppSettings:
     
         config = self.load_config(config_file)
 
+        self.JOY_DAMPENING_MODE = config.get('peripherals').get('joy_dampening_mode')
+        
         self.TRAINING = TrainingConfig(config)
 
         self.VEHICLE = MecanumVehicle(

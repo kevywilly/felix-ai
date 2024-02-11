@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 from typing import Dict
 from src.motion.joystick import JoystickUpdateEvent
@@ -11,8 +11,6 @@ from flask_cors import CORS
 from flask import Flask, Response, jsonify, request
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
-
-
 
 app = Flask(__name__)
 

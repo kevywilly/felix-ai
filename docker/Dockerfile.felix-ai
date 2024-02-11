@@ -6,6 +6,7 @@ WORKDIR /
 
 
 COPY ./scripts/entrypoint.sh /
+COPY ./scripts/felix.sh /
 
 RUN apt-get update && apt-get -y install nginx vim \
     && rm -rf /var/lib/apt/lists/*

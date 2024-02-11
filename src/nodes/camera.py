@@ -3,6 +3,7 @@ import cv2
 from cv2 import VideoCapture
 from settings import settings
 from src.nodes.node import Node
+from src.vision.image import ImageUtils
 
 class Camera(Node):
 
@@ -47,13 +48,26 @@ class Camera(Node):
             frame = self._convert_color(frame)
             frame = self._undistort(frame)
             self.value = frame
-            
+            """
+            try:
+                cv2.namedWindow("felix", cv2.WINDOW_NORMAL)
+                i2 = cv2.resize(frame, (300,300), cv2.INTER_LINEAR)
+                cv2.imshow("felix", i2)
+                cv2.waitKey(0)
+            except Exception as ex:
+                raise ex
+                pass
+            """
             
     def spinner(self):
         self._read(self.cap)
 
 
     def shutdown(self):
+        try:
+            cv2.destroyAllWindows()
+        except:
+            pass
         if self.cap:
             self.cap.release()
 

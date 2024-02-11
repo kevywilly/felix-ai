@@ -1,8 +1,7 @@
 import math
 from typing import Optional
-
 from src.interfaces.msg import Twist
-
+from settings import settings
 class JoystickEventType:
     move = "move"
     stop = "stop"
@@ -34,9 +33,17 @@ class JoystickUpdateEvent:
         if self.type == JoystickEventType.move:
 
             dist = self.distance/100.0
-            x = self.x * dist
-            y = self.y * dist
+            # x is left/right for joystick
+            x = self.x
+            y = self.y
             
+            if settings.JOY_DAMPENING_MODE == 1:
+                x = math.floor(100*(1+math.cos(math.radians(x*180 + 180)))/2)/100  # Math.cos(((x*100)*100/180+180)*RADIANS))/100
+                x = -x if self.x < 0 else x
+            elif settings.JOY_DAMPENING_MODE == 2:
+                x = math.floor(100*(1+math.cos(math.radians(x*90 + 180)))/2)/100  # Math.cos(((x*100)*100/180+180)*RADIANS))/100
+                x = -x if self.x < 0 else x
+                
             try:
                 t = Twist()
                 
