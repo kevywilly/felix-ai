@@ -2,7 +2,7 @@ import os
 from typing import Dict, Optional
 import traitlets
 from settings import settings
-from src.motion.joystick import JoystickUpdateEvent
+from src.motion.joystick import Joystick
 from src.motion.kinematics import Kinematics
 from src.vision.image import Image, ImageUtils
 from src.interfaces.msg import Odometry, Twist
@@ -29,7 +29,7 @@ class Robot(Node):
 
         # initialize nodes
         self._camera: Camera = Camera()
-        self._controller: Controller = Controller(vehicle=settings.VEHICLE, frequency=30)
+        self._controller: Controller = Controller(frequency=30)
 
         # start nodes
         self._controller.spin()
@@ -73,8 +73,10 @@ class Robot(Node):
         return t
 
     def handle_joystick(self, data: Dict) -> Twist:
-            event: JoystickUpdateEvent = JoystickUpdateEvent(**data)
-            t = event.get_twist()
+            x = float(data.get('event',{}).get('x',0))
+            y = float(data.get('event',{}).get('y',0))
+            strafe = float(data.get('strafe', False))
+            t = Joystick.get_twist(x,y, strafe)
             self.set_cmd_vel(t)
             return t
     

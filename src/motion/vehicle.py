@@ -35,6 +35,11 @@ class Vehicle(ABC):
         self.max_wheel_angular_velocity = self.max_rpm*(2*math.pi)/60
         self.motor_power_factor = motor_voltage/12.0
         self.meters_per_rotation = 2*self.wheel_radius*math.pi
+        self.max_linear_velocity = 1.0
+        self.max_angular_velocity = 1.0
+        self.min_linear_velocity = 0.0
+        self.min_angular_velocity = 0.0
+        self.velocity_scaler = np.array([1,1,1],dtype="float32")
 
     @abstractmethod
     def forward_kinematics(self, v_x, v_y, omega) -> np.ndarray:
@@ -75,17 +80,19 @@ class MecanumVehicle(Vehicle):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.L = self.wheel_base
-        self.W = self.track_width
-        
         self.IK_MATRIX = np.array([
             [1,1,1,1],
             [-1,1,1,-1],
             [-1,1,-1,1]
         ])
 
-        self.IK_DIVISOR = np.array([4,4,4*(self.W)])
+        self.IK_DIVISOR = np.array([4,4,4*(self.track_width)])
 
+        self.max_linear_velocity = self._calc_max_linear_velocity(self.max_rpm)
+        self.max_angular_velocity = self._calc_max_angular_velocity(self.max_rpm)
+        self.min_linear_velocity = self._calc_max_linear_velocity(self.min_rpm)
+        self.min_angular_velocity = self._calc_max_angular_velocity(self.min_rpm)
+        self.velocity_scaler = np.array([self.max_linear_velocity, self.max_linear_velocity, self.max_angular_velocity],dtype="float32")
 
     def forward_kinematics(self, v_x, v_y, omega) -> np.ndarray:
         """
@@ -102,10 +109,10 @@ class MecanumVehicle(Vehicle):
         - v_rl: Velocity of the rear-left wheel (m/s)
         - v_rr: Velocity of the rear-right wheel (m/s)
         """
-        v_fl = v_x - v_y - self.W * omega
-        v_fr = v_x + v_y + self.W * omega
-        v_rl = v_x + v_y - self.W * omega
-        v_rr = v_x - v_y + self.W * omega
+        v_fl = v_x - v_y - self.track_width * omega
+        v_fr = v_x + v_y + self.track_width * omega
+        v_rl = v_x + v_y - self.track_width * omega
+        v_rr = v_x - v_y + self.track_width * omega
 
         return np.array([v_fl, v_fr, v_rl, v_rr])
 

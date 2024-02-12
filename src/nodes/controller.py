@@ -2,7 +2,7 @@
 from typing import Optional
 import traitlets
 from src.motion.autodriver import AutoDriver, BinaryObstacleAvoider
-from src.motion.vehicle import Vehicle
+from src.motion.vehicle import MecanumVehicle, Vehicle
 from src.nodes.node import Node
 from src.interfaces.msg import Odometry, Twist, Vector3
 from src.motion.rosmaster import Rosmaster
@@ -27,9 +27,9 @@ class Controller(Node):
     accelerometer_data = traitlets.Any()
     motion_data = traitlets.Any()
 
-    def __init__(self, vehicle: Vehicle, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(Controller, self).__init__(*args, **kwargs)
-        self.vehicle = vehicle
+        self.vehicle = settings.VEHICLE
         self._bot = Rosmaster(car_type=2, com=self.vehicle.yaboom_port)
         self._bot.create_receive_threading()
         self._running = False
@@ -43,11 +43,6 @@ class Controller(Node):
 
         self.angle_delta = 0
         self.camera_image = None
-        self.max_linear_velocity = self.vehicle._calc_max_linear_velocity(self.vehicle.max_rpm)
-        self.max_angular_velocity = self.vehicle._calc_max_angular_velocity(self.vehicle.max_rpm)
-        self.min_linear_velocity = self.vehicle._calc_max_linear_velocity(self.vehicle.min_rpm)
-        self.min_angular_velocity = self.vehicle._calc_max_angular_velocity(self.vehicle.min_rpm)
-        
         self.last_cmd = None
 
         self.print_stats()
@@ -59,10 +54,10 @@ class Controller(Node):
         
     def print_stats(self):
         s = f"""
-            min_linear_velocity: {self.min_linear_velocity}
-            min_angular_velicity: {self.min_angular_velocity}
-            max_linear_velocity: {self.max_linear_velocity}
-            max_angular_velicity: {self.max_angular_velocity}
+            min_linear_velocity: {self.vehicle.min_linear_velocity}
+            min_angular_velicity: {self.vehicle.min_angular_velocity}
+            max_linear_velocity: {self.vehicle.max_linear_velocity}
+            max_angular_velicity: {self.vehicle.max_angular_velocity}
         """
         self.logger.info(s)
 
@@ -93,22 +88,12 @@ class Controller(Node):
 
      
     def _scale_cmd_vel(self, cmd: Twist):
-        #if abs(cmd.linear.x) < self.min_linear_velocity:
-        #    vx = 0.0
-        #else:
-        vx = scale_abs(cmd.linear.x, 0, 1.0, self.min_linear_velocity, self.max_linear_velocity)
-
-        #if abs(cmd.linear.y) < self.min_linear_velocity:
-        #vy = 0.0
-        #else:
-        vy = scale_abs(cmd.linear.y, 0, 1.0, self.min_linear_velocity, self.max_linear_velocity)
-
-        #if abs(cmd.angular.z) < self.min_angular_velocity:
-        #omega = 0.0
-        #else:
-        omega = scale_abs(cmd.angular.z, 0, 1.0, self.min_angular_velocity, self.max_angular_velocity)
-
-        return vx, vy, omega
+        
+        return(
+            self.vehicle.max_linear_velocity if cmd.linear.x > self.vehicle.max_linear_velocity else cmd.linear.x,
+            self.vehicle.max_linear_velocity if cmd.linear.y > self.vehicle.max_linear_velocity else cmd.linear.y,
+            self.vehicle.max_angular_velocity if cmd.angular.z > self.vehicle.max_angular_velocity else cmd.angular.z,
+        )
     
     def _apply_cmd_vel(self, cmd: Twist):
     
@@ -121,12 +106,7 @@ class Controller(Node):
 
         pow = self.vehicle.mps_to_motor_power(vel)
        
-        
-        self._bot.set_motor(
-            pow[0], pow[2], pow[1], pow[3]
-        )
-        
-      
+        self._bot.set_motor(pow[0], pow[2], pow[1], pow[3])
         self.logger.info(f"cmd: [{cmd.linear.x},{cmd.linear.y},{cmd.angular.z}]")
         self.logger.info(f"scaled: [{vx},{vy},{omega}]")
         self.logger.info(f"power: {pow}")

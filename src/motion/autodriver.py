@@ -9,6 +9,7 @@ import time
 from settings import settings
 from src.vision.image import ImageUtils
 import logging
+import os
 torch.hub.set_dir(settings.TRAINING.model_root)
 
 class AutoDriver(ABC):
@@ -19,21 +20,25 @@ class AutoDriver(ABC):
         self.device = torch.device('cuda' if torch.has_cuda else 'cpu')
         self.model_file = model_file
         self.model_loaded = False
-        
+    
+    def model_file_exists(self) -> bool:
+        return os.path.isfile(self.model_file)
+    
     def load_state_dict(self, model):
         try:
-            model.load_state_dict(torch.load(self.model_file))
-            self.model_loaded = True
-        except:
+            if self.model_file_exists():
+                model.load_state_dict(torch.load(self.model_file))
+                self.model_loaded = True
+            else:
+                raise Exception("model file does not exist")
+        except Exception as ex:
             self.logger.warn(f'======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
+            self.logger.warn(ex.__str__())
             self.model_loaded = False
-            
 
     @abstractmethod
     def predict(self, input) -> Twist:
         pass
-
-
 
 class BinaryObstacleAvoider(AutoDriver):
 
@@ -45,10 +50,12 @@ class BinaryObstacleAvoider(AutoDriver):
         super().__init__(model_file)
         self.linear = linear
         self.angular = angular
-        self.model = torchvision.models.alexnet(pretrained=False)
-        self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, 2)
-        self.load_state_dict(self.model)
-        self.model = self.model.to(self.device)
+  
+        if self.model_file_exists:
+            self.model = torchvision.models.alexnet(pretrained=False)
+            self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, 2)
+            self.load_state_dict(self.model)
+            self.model = self.model.to(self.device)
 
     def preprocess(self, sensor_image):
         x = ImageUtils.bgr8_to_rgb8(sensor_image)

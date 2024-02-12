@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-from typing import Dict
-from src.motion.joystick import JoystickUpdateEvent
-from src.motion.kinematics import Kinematics
-from src.interfaces.msg import Odometry, Twist
-from src.nodes.robot import Robot
 import logging
 import os
 from flask_cors import CORS
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, request
+from src.nodes.robot import Robot
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
