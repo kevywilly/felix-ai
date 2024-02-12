@@ -1,7 +1,13 @@
 import math
+import logging
 from typing import Optional
 from src.interfaces.msg import Twist
 from settings import settings
+
+logger = logging.getLogger('FELIX')
+
+ONEMINUSTANH1 = 1-math.tanh(1)
+
 class JoystickEventType:
     move = "move"
     stop = "stop"
@@ -30,37 +36,42 @@ class JoystickUpdateEvent:
         self.distance: float = distance
 
     def get_twist(self) -> Twist:
+
+        def same_sign(x,v):
+            if (x < 0 and v > 0) or (x > 0 and v < 0):
+                return -1 * v
+            return v
+        
+        def dampen(x,a,b):
+            return same_sign(x,math.floor(100*(1+math.cos(math.radians(a*x+180)))*b)/100)
+            
+        def tdampen(x):
+            return math.tanh(x)+ONEMINUSTANH1
+        
         if self.type == JoystickEventType.move:
 
-            dist = self.distance/100.0
-            # x is left/right for joystick
-            x = self.x
-            y = self.y
-            
+            vz = -self.x
+            vx = self.y
+
             if settings.JOY_DAMPENING_MODE == 1:
-                x = math.floor(100*(1+math.cos(math.radians(x*180 + 180)))/2)/100  # Math.cos(((x*100)*100/180+180)*RADIANS))/100
-                x = -x if self.x < 0 else x
+                vx = dampen(vx, 180, 0.5)
+                vz = dampen(vz, 180, 0.5)
             elif settings.JOY_DAMPENING_MODE == 2:
-                x = math.floor(100*(1+math.cos(math.radians(x*90 + 180)))/2)/100  # Math.cos(((x*100)*100/180+180)*RADIANS))/100
-                x = -x if self.x < 0 else x
+                vx = dampen(vx, 180, 0.5)
+                vz = dampen(vz, 90, vz)
+            elif settings.JOY_DAMPENING_MODE == 3:
+                vx = tdampen(vx) 
+                vz = tdampen(vz)
                 
-            try:
-                t = Twist()
-                
-                angle = math.degrees(math.atan2(self.x,self.y))
-                
-                if abs(angle) <= 5 or abs(angle) >=175:
-                    # forward / backward
-                    t.angular.z = 0
-                    t.linear.x = y
-                else: 
-                    # turn
-                    t.linear.x = y
-                    t.angular.z = -x
-                return t
-            except Exception as ex:
-                print(ex.__str__())
-                return Twist()
+            t = Twist()
+            
+            # angle = math.degrees(math.atan2(self.x,self.y))
+            t.linear.x = vx
+            t.angular.z = vz
+            logger.info(f"joy-in: [{-self.y},0,{-self.x}]")
+            logger.info(f"joy-out: [{t.linear.x},0,{t.angular.z}]")
+            return t
+
         else:
             return Twist()
         

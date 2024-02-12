@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 import atexit
 from src.motion.rosmaster import Rosmaster
 import numpy as np

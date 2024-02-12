@@ -50,9 +50,21 @@ class Controller(Node):
         
         self.last_cmd = None
 
+        self.print_stats()
+
         self.autodriver = BinaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/binary_obstacle_avoidance.pth")
 
         self.loaded()
+
+        
+    def print_stats(self):
+        s = f"""
+            min_linear_velocity: {self.min_linear_velocity}
+            min_angular_velicity: {self.min_angular_velocity}
+            max_linear_velocity: {self.max_linear_velocity}
+            max_angular_velicity: {self.max_angular_velocity}
+        """
+        self.logger.info(s)
 
     def get_imu_data(self):
         self.attitude_data = Vector3.from_tuple(self._bot.get_imu_attitude_data())
@@ -64,13 +76,13 @@ class Controller(Node):
     def spinner(self):
         self.get_imu_data()
         if self.motion_data.x != 0 or self.motion_data.y != 0:
-            self.logger.info(f'motion: \t{self.motion_data} \ncmd: \t{self.last_cmd}')
+            pass
+            #self.logger.info(f'twist: \t{self.motion_data} \ncmd: \t{self.last_cmd}')
         if self.autodrive and self.camera_image is not None:
             prediction, self.cmd_vel = self.autodriver.predict(self.camera_image)
             #self.logger.info(f"Got prediction: {prediction}")
 
-        
-
+    
     def get_stats(self):
         return f"""
             cmd_vel: {self.cmd_vel}
@@ -81,9 +93,21 @@ class Controller(Node):
 
      
     def _scale_cmd_vel(self, cmd: Twist):
+        #if abs(cmd.linear.x) < self.min_linear_velocity:
+        #    vx = 0.0
+        #else:
         vx = scale_abs(cmd.linear.x, 0, 1.0, self.min_linear_velocity, self.max_linear_velocity)
+
+        #if abs(cmd.linear.y) < self.min_linear_velocity:
+        #vy = 0.0
+        #else:
         vy = scale_abs(cmd.linear.y, 0, 1.0, self.min_linear_velocity, self.max_linear_velocity)
+
+        #if abs(cmd.angular.z) < self.min_angular_velocity:
+        #omega = 0.0
+        #else:
         omega = scale_abs(cmd.angular.z, 0, 1.0, self.min_angular_velocity, self.max_angular_velocity)
+
         return vx, vy, omega
     
     def _apply_cmd_vel(self, cmd: Twist):
@@ -96,14 +120,17 @@ class Controller(Node):
         )
 
         pow = self.vehicle.mps_to_motor_power(vel)
-
-        #print('velocity', vx,vy,omega)
-        print('power', pow)
        
+        
         self._bot.set_motor(
             pow[0], pow[2], pow[1], pow[3]
         )
+        
       
+        self.logger.info(f"cmd: [{cmd.linear.x},{cmd.linear.y},{cmd.angular.z}]")
+        self.logger.info(f"scaled: [{vx},{vy},{omega}]")
+        self.logger.info(f"power: {pow}")
+
         self.last_cmd = cmd
         
 

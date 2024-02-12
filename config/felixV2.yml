@@ -1,4 +1,4 @@
-debug: False
+debug: True
 vehicle:
   min_rpm: 30
   max_rpm: 205
