@@ -5,7 +5,7 @@ import os
 
 if __name__ == "__main__":
     trainer = ObstacleTrainer(
-        images_path=settings.Training.tags_path, 
-        model_file=os.path.join(settings.Training.model_root,'checkpoints/binary_obstacle_avoidance.pth')
+        images_path=settings.TRAINING.tags_path, 
+        model_file=os.path.join(settings.TRAINING.model_root,'checkpoints/binary_obstacle_avoidance.pth')
     )
     trainer.train()

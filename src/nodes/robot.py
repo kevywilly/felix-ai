@@ -4,6 +4,7 @@ import traitlets
 from settings import settings
 from src.motion.joystick import Joystick
 from src.motion.kinematics import Kinematics
+# from src.nodes.video_viewer import VideoViewer
 from src.vision.image import Image, ImageUtils
 from src.interfaces.msg import Odometry, Twist
 from src.nodes.node import Node
@@ -30,25 +31,25 @@ class Robot(Node):
         # initialize nodes
         self._camera: Camera = Camera()
         self._controller: Controller = Controller(frequency=30)
+        
 
         # start nodes
         self._controller.spin()
         self._camera.spin()
-        self._setup_subscriptions()
         self.last_capture_time = time.time()
+        # self._video_viewer: VideoViewer = VideoViewer()
+        self._setup_subscriptions()
 
         self.loaded()
 
-    
     def _setup_subscriptions(self):
         traitlets.dlink((self._camera, 'value'), (self.image, 'value'), transform=ImageUtils.bgr8_to_jpeg)
         traitlets.dlink((self._camera, 'value'), (self._controller, 'camera_image'))
-
+        # traitlets.dlink((self._camera, 'value'), (self._video_viewer, 'camera_image'))
 
     def shutdown(self):
         self._camera.unobserve_all()
         self._controller.unobserve_all()
-
 
     def save_tag(self, tag):
         return self._image_collector.save_tag(self.get_image(), tag)

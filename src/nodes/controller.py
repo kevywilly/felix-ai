@@ -11,7 +11,6 @@ import numpy as np
 import time
 from copy import deepcopy
 from settings import settings
-from src.motion.utils import scale, scale_abs
 
 class Controller(Node):
 
@@ -107,6 +106,7 @@ class Controller(Node):
         pow = self.vehicle.mps_to_motor_power(vel)
        
         self._bot.set_motor(pow[0], pow[2], pow[1], pow[3])
+        
         self.logger.info(f"cmd: [{cmd.linear.x},{cmd.linear.y},{cmd.angular.z}]")
         self.logger.info(f"scaled: [{vx},{vy},{omega}]")
         self.logger.info(f"power: {pow}")

@@ -3,8 +3,8 @@ vehicle:
   min_rpm: 30
   max_rpm: 205
   wheel_radius: 0.0485
-  wheel_base: 0.15
-  track_width: 0.229
+  wheel_base: 0.14
+  track_width: 0.220
   gear_ratio: 56
   motor_voltage: 12
 peripherals:
