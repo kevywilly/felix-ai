@@ -46,7 +46,7 @@ class BinaryObstacleAvoider(AutoDriver):
     stdev = 255.0 * np.array([0.229, 0.224, 0.225])
     normalize = torchvision.transforms.Normalize(mean, stdev)
 
-    def __init__(self, model_file, linear = 0.2, angular = 0.2):
+    def __init__(self, model_file, linear = 0.4, angular = 1.0):
         super().__init__(model_file)
         self.linear = linear
         self.angular = angular
