@@ -2,3 +2,9 @@ pydantic
 traitlets
 flask
 flask_cors
+torch
+torchvision
+opencv-python
+pyaml
+numpy
+Pillow

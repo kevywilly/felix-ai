@@ -1,13 +1,14 @@
+import os
+
 import torch
-import torch.optim as optim
 import torch.nn.functional as F
-import torchvision
-import torchvision.datasets as datasets
+import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as transforms
-from settings import settings
+from torch.utils.data import Dataset
 
-import os
+from settings import settings
+from src.training.datasets import CustomImageFolder
 
 if not os.path.exists(settings.TRAINING.model_root):
             os.makedirs(settings.TRAINING.model_root)
@@ -31,24 +32,31 @@ class Trainer(ABC):
         pass
 
 class ObstacleTrainer(Trainer):
-    def __init__(self, images_path, *args, **kwargs):
+
+    def __init__(self, images_path, random_flip: bool = False, target_flips = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.images_path = images_path
         self.categories = os.listdir(images_path)
         self.num_categories = len(self.categories)
-  
+        self.random_flip = random_flip
+        self.target_flips = target_flips
         print(f'categories={self.num_categories}')
 
     def _get_dataset(self):
-        return datasets.ImageFolder(
-            self.images_path,
-            transforms.Compose([
+
+        return CustomImageFolder(
+            root=self.images_path,
+            target_flips=self.target_flips,
+            transform=transforms.Compose([
                 transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ])
+            ],
+
+            )
         )
+
 
     def train(self):
         dataset = self._get_dataset()
