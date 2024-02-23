@@ -55,6 +55,16 @@ def api_joystick():
     return app.robot.handle_joystick(request.get_json()).dict()
     
 
+@app.post('/api/snapshots/<folder>/<label>')
+def create_snapshot(folder: str, label: str):
+    return app.robot.create_snapshot(folder, label)
+
+
+@app.get('/api/snapshots/<folder>')
+def get_snapshots(folder: str):
+    return app.robot.get_snapshots(folder)
+
+
 @app.post('/api/tags')
 def add_tag():
     data = request.get_json()
@@ -70,6 +80,6 @@ def get_tags():
 
 
 if __name__ == "__main__":
-    app.robot: Robot = Robot(capture_when_driving=False)
+    app.robot = Robot(capture_when_driving=False)
     app.robot.spin(frequency=0.5)
     app.run(host='0.0.0.0', debug=False)

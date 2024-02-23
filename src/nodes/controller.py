@@ -1,7 +1,7 @@
 
 from typing import Optional
 import traitlets
-from src.motion.autodriver import AutoDriver, BinaryObstacleAvoider
+from src.motion.autodriver import AutoDriver, BinaryObstacleAvoider, TernaryObstacleAvoider
 from src.motion.vehicle import MecanumVehicle, Vehicle
 from src.nodes.node import Node
 from src.interfaces.msg import Odometry, Twist, Vector3
@@ -46,7 +46,7 @@ class Controller(Node):
 
         self.print_stats()
 
-        self.autodriver = BinaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/binary_obstacle_avoidance.pth")
+        self.autodriver = TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
 
         self.loaded()
 
@@ -73,8 +73,8 @@ class Controller(Node):
             pass
             #self.logger.info(f'twist: \t{self.motion_data} \ncmd: \t{self.last_cmd}')
         if self.autodrive and self.camera_image is not None:
-            prediction, self.cmd_vel = self.autodriver.predict(self.camera_image)
-            #self.logger.info(f"Got prediction: {prediction}")
+            self.cmd_vel = self.autodriver.predict(self.camera_image)
+            #self.logger.info(f"Got prediction: {predictions}")
 
     
     def get_stats(self):

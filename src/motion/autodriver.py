@@ -40,20 +40,20 @@ class AutoDriver(ABC):
     def predict(self, input) -> Twist:
         pass
 
-class BinaryObstacleAvoider(AutoDriver):
-
+class ObstacleAvoider(AutoDriver):
     mean = 255.0 * np.array([0.485, 0.456, 0.406])
     stdev = 255.0 * np.array([0.229, 0.224, 0.225])
     normalize = torchvision.transforms.Normalize(mean, stdev)
 
-    def __init__(self, model_file, linear = 0.4, angular = 1.0):
+    def __init__(self, model_file, num_targets, linear = settings.autodrive_linear, angular = settings.autodrive_angular):
         super().__init__(model_file)
         self.linear = linear
         self.angular = angular
+        self.num_targets = num_targets
   
         if self.model_file_exists:
             self.model = torchvision.models.alexnet(pretrained=False)
-            self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, 2)
+            self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, num_targets)
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)
 
@@ -67,20 +67,33 @@ class BinaryObstacleAvoider(AutoDriver):
         x = x[None, ...]
         return x
 
-    def predict(self, input) -> Twist:
-
+    def get_predictions(self, input):
         if not self.model_loaded:
-            return Twist()
+            return None
         
         x = self.preprocess(input)
         y = self.model(x)
         
         # we apply the `softmax` function to normalize the output vector so it sums to 1 (which makes it a probability distribution)
         y = F.softmax(y, dim=1)
-        
-        prob_blocked = float(y.flatten()[0])
+        print(y)
+        return y.flatten()
+
+class BinaryObstacleAvoider(ObstacleAvoider):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(num_targets=2, *args, **kwargs)
+
+    def predict(self, input) -> Twist:
 
         t = Twist()
+
+        predictions = self.get_predictions(input)
+
+        if predictions is None:
+            return t
+        
+        prob_blocked = float(predictions[0])
 
         if prob_blocked < 0.5:
             t.linear.x = self.linear
@@ -90,6 +103,47 @@ class BinaryObstacleAvoider(AutoDriver):
             t.linear.x = 0.0
 
         return prob_blocked, t
+
+class TernaryObstacleAvoider(ObstacleAvoider):
+
+    NA = -1
+    FORWARD = 0
+    LEFT = 1
+    RIGHT = 2
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(num_targets=3, *args, **kwargs)
+
+        self.status = self.NA
+        
+
+    def predict(self, input) -> Twist:
+
+        cmd = Twist()
+
+        predictions = self.get_predictions(input)
+
+        if predictions is None:
+            return cmd
+        
+        forward = float(predictions[self.FORWARD])
+        left = float(predictions[self.LEFT])
+        right = float(predictions[self.RIGHT])
+
+        if forward > 0.5:
+            cmd.linear.x = self.linear
+            cmd.angular.z = 0.0
+            self.status = self.FORWARD
+        elif left > 0.5 and self.status != self.RIGHT:
+            cmd.linear.x = 0.0
+            cmd.angular.z = self.angular
+            self.status = self.LEFT
+        elif right > 0.5 and self.status != self.LEFT:
+            cmd.linear.x = 0.0
+            cmd.angular.z = -self.angular
+            self.status = self.RIGHT
+
+        return cmd
             
         
 

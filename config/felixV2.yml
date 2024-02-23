@@ -10,9 +10,13 @@ vehicle:
 peripherals:
   yaboom: /dev/myserial
   joy_dampening_mode: 1
+autodrive:
+  linear: 0.3
+  angular: 1.2
 training:
   data_root:          &root /felix-ai/data
-  model_root:        !join [*root,/models]
+  training_path:      !join [*root,/training]
+  model_root:         !join [*root,/models]
   navigation_path:    !join [*root,/training/navigation]
   tags_path:          !join [*root,/training/tags]
   driving_data_path:  !join [*root,/training/driving]

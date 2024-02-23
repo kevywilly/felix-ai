@@ -27,10 +27,14 @@ if not(ROBOT):
 class TrainingConfig:
     def __init__(self, config):
         self.data_root = config.get('training').get('data_root')
+        self.training_path = config.get('training').get('training_path')
         self.tags_path = config.get('training').get('tags_path')
         self.navigation_path = config.get('training').get('navigation_path')
         self.model_root = config.get('training').get('model_root')
         self.driving_data_path = config.get('training').get('driving_data_path')
+
+    def training_folder(self,folder):
+        return os.path.join(self.training_path,folder.lower())
 
 class AppSettings:
 
@@ -70,6 +74,9 @@ class AppSettings:
             .get('data')
         ).reshape(3,3)
 
+        self.autodrive_linear = config.get('autodrive').get('linear')
+        self.autodrive_angular = config.get('autodrive').get('angular')
+        
         DEBUG: bool = config.get('debug')
 
     

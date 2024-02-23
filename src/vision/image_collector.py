@@ -49,11 +49,27 @@ class ImageCollector:
             return s+"."+extension
         return s
     
-
+    def create_snapshot(self, image, folder, label) -> int:
+        path = os.path.join(settings.TRAINING.training_folder(folder),label)
+        self.save_image(
+            image, 
+            path, 
+            self.filetime('jpg')
+            )
+        return self.get_snapshots(folder)
+    
+    def get_snapshots(self, folder):
+        d = {}
+        path = settings.TRAINING.training_folder(folder)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        for p in os.listdir(path):
+            d[p.lower()] = len(os.listdir(os.path.join(path,p)))
+        return d
+    
     def save_tag(self, image, tag) -> int:
         self.save_image(image, os.path.join(settings.TRAINING.tags_path,tag.lower()), self.filetime('jpg'))
         return self.get_tags()
-    
 
     def get_tags(self):
         d = {}

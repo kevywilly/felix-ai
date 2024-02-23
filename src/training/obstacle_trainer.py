@@ -115,6 +115,11 @@ class ObstacleTrainer(Trainer):
             if test_accuracy > best_accuracy:
                 torch.save(model.state_dict(), self.model_file)
                 best_accuracy = test_accuracy
+
+            if test_accuracy >= 0.99:
+                 print(f'Goal reached - test accuracy >= 0.99')
+                 break
+                 
     
 
         

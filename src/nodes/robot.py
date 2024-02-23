@@ -56,6 +56,12 @@ class Robot(Node):
     
     def get_tags(self):
         return self._image_collector.get_tags()
+    
+    def create_snapshot(self, folder, label):
+        return self._image_collector.create_snapshot(self.get_image(), folder, label)
+    
+    def get_snapshots(self, folder):
+        return self._image_collector.get_snapshots(folder)
 
     def _motion_changed(self, changed):
         self.logger.info("motion")
