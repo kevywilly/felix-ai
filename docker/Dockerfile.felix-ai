@@ -17,7 +17,8 @@ RUN pip3 install --no-cache-dir --verbose \
   flask \
   flask_cors \
   pandas \
-  traitlets
+  traitlets \
+  rplidar-roboticia
 
 FROM stage1 as stage2
 

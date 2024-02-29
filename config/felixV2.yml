@@ -3,13 +3,14 @@ vehicle:
   min_rpm: 30
   max_rpm: 205
   wheel_radius: 0.0485
-  wheel_base: 0.14
-  track_width: 0.220
+  wheel_base: 0.19
+  track_width: 0.265
   gear_ratio: 56
   motor_voltage: 12
 peripherals:
   yaboom: /dev/myserial
   joy_dampening_mode: 1
+capture_when_driving: True
 autodrive:
   linear: 0.3
   angular: 1.2

@@ -124,6 +124,9 @@ class Twist(DataModel):
     def dict(self):
         return {'linear' : self.linear.dict(), 'angular': self.angular.dict()}
     
+    def is_zero(self):
+        return self.linear.x == 0 and self.linear.y == 0 and self.angular.z == 0
+    
     def __repr__(self):
         return f'[[{self.linear}],[{self.angular}]]'
         

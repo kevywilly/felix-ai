@@ -5,6 +5,7 @@ import os
 from flask_cors import CORS
 from flask import Flask, Response, request
 from src.nodes.robot import Robot
+from settings import settings
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
@@ -80,6 +81,6 @@ def get_tags():
 
 
 if __name__ == "__main__":
-    app.robot = Robot(capture_when_driving=False)
+    app.robot = Robot(capture_when_driving=settings.capture_when_driving)
     app.robot.spin(frequency=0.5)
     app.run(host='0.0.0.0', debug=False)

@@ -76,6 +76,7 @@ class AppSettings:
 
         self.autodrive_linear = config.get('autodrive').get('linear')
         self.autodrive_angular = config.get('autodrive').get('angular')
+        self.capture_when_driving = config.get('capture_when_driving', False)
         
         DEBUG: bool = config.get('debug')
 

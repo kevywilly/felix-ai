@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Optional
+from src.nodes.lidar import Lidar
 import traitlets
 from settings import settings
 from src.motion.joystick import Joystick
@@ -15,9 +16,18 @@ import numpy as np
 
 from src.vision.image_collector import ImageCollector
 
+class Measurement(traitlets.HasTraits):
+    value = traitlets.Any(allow_none=True)
+
+class CmdVel(traitlets.HasTraits):
+    value = traitlets.Instance(Twist, allow_none=True)
+
 class Robot(Node):
 
     image = traitlets.Instance(Image)
+    measurement = traitlets.Instance(Measurement)
+    cmd_vel = traitlets.Instance(CmdVel)
+
     capture_when_driving = traitlets.Bool(default_value=False)
     capture_when_driving_frequency = traitlets.Float(default_value=0.5)
 
@@ -26,16 +36,20 @@ class Robot(Node):
         
         # initialize objects
         self.image = Image()
+        self.measurement = Measurement()
+        self.cmd_vel = CmdVel()
+        self.cmd_zero = True
         self._image_collector = ImageCollector()
 
         # initialize nodes
         self._camera: Camera = Camera()
         self._controller: Controller = Controller(frequency=30)
-        
+        self._lidar: Lidar = Lidar()
 
         # start nodes
         self._controller.spin()
         self._camera.spin()
+        self._lidar.spin()
         self.last_capture_time = time.time()
         # self._video_viewer: VideoViewer = VideoViewer()
         self._setup_subscriptions()
@@ -45,6 +59,8 @@ class Robot(Node):
     def _setup_subscriptions(self):
         traitlets.dlink((self._camera, 'value'), (self.image, 'value'), transform=ImageUtils.bgr8_to_jpeg)
         traitlets.dlink((self._camera, 'value'), (self._controller, 'camera_image'))
+        traitlets.dlink((self._lidar, 'value'), (self.measurement, 'value'))
+        traitlets.dlink((self._controller, 'cmd_vel'), (self.cmd_vel, 'value'))
         # traitlets.dlink((self._camera, 'value'), (self._video_viewer, 'camera_image'))
 
     def shutdown(self):
@@ -135,6 +151,14 @@ class Robot(Node):
     def spinner(self):
         self._capture()
         
+    def _prepare_lidar_data(self) -> np.ndarray:
+        ar = np.zeros((360,1))
+        for measure in self.measurement.value:
+            ar[measure[1]] = [measure[2]]
+            
+        ar3 = ar.reshape(1,360).astype(int)
+        return ar3
+
     def _prepare_nav_data(self) -> np.ndarray:
         return np.concatenate(
             (
@@ -149,19 +173,29 @@ class Robot(Node):
         return min(self._nav_data[:3] == nav_data[:3]) 
     
     def _capture(self):
-        t = time.time()
+
         if not self.capture_when_driving:
             return
         
+        t = time.time()
+
         if (t-self.last_capture_time) < 1.0/self.capture_when_driving_frequency:
             return
-            
+        
+        self.last_capture_time = t
+        
+        if self.measurement.value is None or self.cmd_vel.value is None:
+            return
+
+        if self.cmd_vel.value.is_zero() and self.cmd_zero:
+            return
+        
+        self.cmd_zero = self.cmd_vel.value.is_zero()
+
+        lidar_data = self._prepare_lidar_data()
+    
         nav_data = self._prepare_nav_data()
 
-        if self._nav_data_unchanged(nav_data):
-            return
-            
-        
         filepath = self._image_collector.save_image(
             self.get_image(), 
             path = settings.TRAINING.driving_data_path, 
@@ -170,15 +204,16 @@ class Robot(Node):
 
         if filepath:
             self._save_motion_data_to_csv(filepath, nav_data)
+            self._save_lidar_data_to_csv(filepath, lidar_data)
+
         self.last_capture_time = t
-        self.logger.info("captured")
+        self.logger.info("captured navigation data")
 
 
     def _save_motion_data_to_csv(self, image_filepath: str, nav_data: np.ndarray):
-        data_filepath = image_filepath.replace('.jpg', ".label.csv")
-        image_file_name = image_filepath.split("/")[-1]
+        data_filepath = image_filepath.replace('.jpg', ".motion.csv")
        
-        csv = image_file_name + "," + ",".join(
+        csv = ",".join(
             [f"{item}" for item in nav_data]
         ) 
 
@@ -187,6 +222,24 @@ class Robot(Node):
             try:
                 f.write(csv)
                 self._nav_data = nav_data
+                return data_filepath
+            except Exception as ex:
+                self.logger.error(ex)
+                return None
+            
+    def _save_lidar_data_to_csv(self, image_filepath: str, lidar_data: np.ndarray):
+
+        data_filepath = image_filepath.replace('.jpg', ".lidar.csv")
+       
+        csv = ",".join(
+            [f"{item}" for item in lidar_data[0]]
+        ) 
+
+        self.logger.info(f"writing data to {data_filepath}")
+        with open(data_filepath, 'w') as f:
+            try:
+                f.write(csv)
+                self._lidar_data = lidar_data
                 return data_filepath
             except Exception as ex:
                 self.logger.error(ex)
