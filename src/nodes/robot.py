@@ -1,6 +1,7 @@
 import os
 from typing import Dict, Optional
 from src.nodes.lidar import Lidar
+from src.utils.system import SystemUtils
 import traitlets
 from settings import settings
 from src.motion.joystick import Joystick
@@ -35,6 +36,13 @@ class Robot(Node):
         super(Robot, self).__init__(**kwargs)
         
         # initialize objects
+        self.session_id = str(int(time.time()))
+        
+        self.drive_data_path = os.path.join(settings.TRAINING.driving_data_path,self.session_id)
+
+        if self.capture_when_driving:
+            SystemUtils.makedir(self.drive_data_path)
+        
         self.image = Image()
         self.measurement = Measurement()
         self.cmd_vel = CmdVel()
@@ -198,7 +206,7 @@ class Robot(Node):
 
         filepath = self._image_collector.save_image(
             self.get_image(), 
-            path = settings.TRAINING.driving_data_path, 
+            path = self.drive_data_path, 
             filename=ImageCollector.filetime('jpg')
         )
 
