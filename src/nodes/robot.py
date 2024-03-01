@@ -8,7 +8,7 @@ from src.motion.joystick import Joystick
 from src.motion.kinematics import Kinematics
 # from src.nodes.video_viewer import VideoViewer
 from src.vision.image import Image, ImageUtils
-from src.interfaces.msg import Odometry, Twist
+from src.interfaces.msg import Odometry, Twist, Vector3
 from src.nodes.node import Node
 from src.nodes.controller import Controller
 from src.nodes.camera import Camera
@@ -22,6 +22,11 @@ class Measurement(traitlets.HasTraits):
 
 class CmdVel(traitlets.HasTraits):
     value = traitlets.Instance(Twist, allow_none=True)
+    def numpy(self):
+        if self.value is None:
+            return np.zeros((3))
+        else:
+            return np.array([self.value.linear.x, self.value.linear.y, self.value.angular.z])
 
 class Robot(Node):
 
@@ -51,8 +56,8 @@ class Robot(Node):
 
         # initialize nodes
         self._camera: Camera = Camera()
-        self._controller: Controller = Controller(frequency=30)
         self._lidar: Lidar = Lidar()
+        self._controller: Controller = Controller(frequency=30)
 
         # start nodes
         self._controller.spin()
@@ -104,12 +109,12 @@ class Robot(Node):
         return t
 
     def handle_joystick(self, data: Dict) -> Twist:
-            x = float(data.get('event',{}).get('x',0))
-            y = float(data.get('event',{}).get('y',0))
-            strafe = float(data.get('strafe', False))
-            t = Joystick.get_twist(x,y, strafe)
-            self.set_cmd_vel(t)
-            return t
+        x = float(data.get('event',{}).get('x',0))
+        y = float(data.get('event',{}).get('y',0))
+        strafe = float(data.get('strafe', False))
+        t = Joystick.get_twist(x,y, strafe)
+        self.set_cmd_vel(t)
+        return t
     
     def handle_navigate(self, data: Dict) -> str:
 
@@ -160,20 +165,25 @@ class Robot(Node):
         self._capture()
         
     def _prepare_lidar_data(self) -> np.ndarray:
-        ar = np.zeros((360,1))
+
+        ar = np.zeros((360))
+
         for measure in self.measurement.value:
-            ar[measure[1]] = [measure[2]]
+            ar[measure[1]] = measure[2]
             
-        ar3 = ar.reshape(1,360).astype(int)
-        return ar3
+        return ar
+
 
     def _prepare_nav_data(self) -> np.ndarray:
+        
         return np.concatenate(
             (
-                self._controller.motion_data.numpy(),
+                self._prepare_lidar_data(),
                 self._controller.attitude_data.numpy(),
                 self._controller.gyroscope_data.numpy(),
-                self._controller.accelerometer_data.numpy()   
+                self._controller.accelerometer_data.numpy(),
+                self._controller.motion_data.numpy(),
+                self.cmd_vel.numpy(),
             )
         )
     
@@ -199,8 +209,6 @@ class Robot(Node):
             return
         
         self.cmd_zero = self.cmd_vel.value.is_zero()
-
-        lidar_data = self._prepare_lidar_data()
     
         nav_data = self._prepare_nav_data()
 
@@ -211,21 +219,20 @@ class Robot(Node):
         )
 
         if filepath:
-            self._save_motion_data_to_csv(filepath, nav_data)
-            self._save_lidar_data_to_csv(filepath, lidar_data)
+            self._save_nav_data_to_csv(filepath, nav_data)
 
         self.last_capture_time = t
         self.logger.info("captured navigation data")
 
 
-    def _save_motion_data_to_csv(self, image_filepath: str, nav_data: np.ndarray):
-        data_filepath = image_filepath.replace('.jpg', ".motion.csv")
+    def _save_nav_data_to_csv(self, image_filepath: str, nav_data: np.ndarray):
+        data_filepath = image_filepath.replace('.jpg', ".nav.csv")
        
-        csv = ",".join(
+        csv = image_filepath + ',' + ",".join(
             [f"{item}" for item in nav_data]
         ) 
 
-        self.logger.info(f"writing data to {data_filepath}")
+        self.logger.info(f"writing nav_data to {data_filepath}")
         with open(data_filepath, 'w') as f:
             try:
                 f.write(csv)

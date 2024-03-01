@@ -72,7 +72,7 @@ class Controller(Node):
         if self.motion_data.x != 0 or self.motion_data.y != 0:
             pass
             #self.logger.info(f'twist: \t{self.motion_data} \ncmd: \t{self.last_cmd}')
-        if self.autodrive and self.camera_image is not None:
+        if self.autodrive and self.autodriver is not None and self.camera_image is not None:
             self.cmd_vel = self.autodriver.predict(self.camera_image)
             #self.logger.info(f"Got prediction: {predictions}")
 
