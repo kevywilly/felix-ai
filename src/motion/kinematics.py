@@ -127,8 +127,62 @@ class Kinematics:
             rl*RPS_TO_RPM,
             rr*RPS_TO_RPM
         )
-    
-    
+
+    import math
+
+    @staticmethod
+    def calculate_direction(linear_velocity, angular_velocity, time):
+        # Assuming linear_velocity is the velocity along the heading direction
+        # Convert angular velocity from radians per second to degrees per second
+        angular_velocity_deg = math.degrees(angular_velocity)
+
+        # Calculate change in heading angle
+        delta_heading = angular_velocity_deg * time
+
+        # Calculate new heading direction
+        new_heading = delta_heading
+
+        return new_heading
+
+    @staticmethod
+    def calculate_heading(linear_x, linear_y, angular_z):
+        # Calculate the magnitude of linear velocity
+        linear_velocity_magnitude = math.sqrt(linear_x ** 2 + linear_y ** 2)
+
+        # If the linear velocity is almost zero, return current heading
+        #if linear_velocity_magnitude < 0.001:
+        #    return None
+
+        # Calculate the heading angle using arctan2 function
+        heading = math.atan2(linear_y, linear_x)
+
+        # Adjust heading based on the direction of linear velocity
+        if heading < 0:
+            heading += 2 * math.pi
+
+        # Adjust heading based on angular velocity
+        heading += angular_z
+
+        # Normalize heading to be within [0, 2*pi)
+        heading %= 2 * math.pi
+
+        return heading
+
+    @staticmethod
+    def calculate_turn(linear_x, linear_y, angular_z) -> np.ndarray:
+        heading = Kinematics.calculate_heading(linear_x, linear_y, angular_z)
+        forward = 0
+        left = 0
+        right = 0
+
+        if heading > math.radians(5) and heading <= math.radians(180):
+            return 1
+        elif heading > math.radians(180) and heading < math.radians(355):
+            return 2
+        else:
+            return 0
+
+        return np.array(([forward,left,right]))
 
 
 # Wheel layout
