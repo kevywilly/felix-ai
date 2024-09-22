@@ -10,7 +10,7 @@ import atexit
 import numpy as np
 import time
 from copy import deepcopy
-from settings import settings
+from src.settings import settings
 
 class Controller(Node):
 
@@ -180,7 +180,7 @@ class Controller(Node):
 """
 import time
 from src.motion.rosmaster import Rosmaster
-bot = Rosmaster(car_type=2, com="/dev/ttyAMA0")
+bot = Rosmaster(car_type=2, com="/dev/myserial")
 bot.create_receive_threading()
 bot.get_imu_attitude_data()
 bot.set_motor(50,50,50,50)

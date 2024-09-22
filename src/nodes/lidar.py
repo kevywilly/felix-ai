@@ -1,7 +1,7 @@
 import traitlets
 import cv2
 from cv2 import VideoCapture
-from settings import settings
+from src.settings import settings
 from src.nodes.node import Node
 from src.vision.image import ImageUtils
 from rplidar import RPLidar

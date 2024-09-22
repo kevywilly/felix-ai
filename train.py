@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from src.training.obstacle_trainer import ObstacleTrainer
-from settings import settings
+from src.settings import settings
 import os
 
 

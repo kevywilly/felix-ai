@@ -7,7 +7,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 
-from settings import settings
+from src.settings import settings
 from src.training.datasets import CustomImageFolder
 
 if not os.path.exists(settings.TRAINING.model_root):

@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 import cv2
-from settings import settings
+from src.settings import settings
 from uuid import uuid4
 
 class ImageCollector:

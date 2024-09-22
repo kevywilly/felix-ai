@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from src.nodes.lidar import Lidar
 from src.utils.system import SystemUtils
 import traitlets
-from settings import settings
+from src.settings import settings
 from src.motion.joystick import Joystick
 from src.motion.kinematics import Kinematics
 # from src.nodes.video_viewer import VideoViewer

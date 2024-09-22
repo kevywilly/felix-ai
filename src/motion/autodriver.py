@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import torch.nn.functional as F
 import time
-from settings import settings
+from src.settings import settings
 from src.vision.image import ImageUtils
 import logging
 import os

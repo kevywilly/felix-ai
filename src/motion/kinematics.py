@@ -1,4 +1,4 @@
-from settings import settings
+from src.settings import settings
 from src.interfaces.msg import Odometry
 
 from typing import Tuple

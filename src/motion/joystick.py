@@ -2,7 +2,7 @@ import math
 import logging
 from typing import Optional
 from src.interfaces.msg import Twist
-from settings import settings
+from src.settings import settings
 import numpy as np
 
 logger = logging.getLogger('FELIX')
