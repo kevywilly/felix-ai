@@ -1,9 +1,12 @@
 import os
 import time
+import json
 from pathlib import Path
 import cv2
 from settings import settings
 from uuid import uuid4
+from typing import Optional, Dict
+from glob import glob
 
 class ImageCollector:
     def __init__(self):
@@ -22,6 +25,20 @@ class ImageCollector:
         except FileExistsError:
             pass
 
+    
+    def save_dict(self, data, path, filename) -> bool:
+        if not os.path.exists(path=path):
+            os.makedirs(path)
+
+        save_path = os.path.join(path,filename)
+
+        with open(save_path, 'w') as f:
+            print(f"writing additional data to {save_path}")
+            try:
+                f.write(json.dumps(data))
+            except Exception as ex:
+                print(str(ex))
+                return False
 
     
     def save_image(self, image, path, filename) -> bool:
@@ -43,19 +60,29 @@ class ImageCollector:
 
 
     @classmethod
+    def time_prefix(cls):
+        return str(time.time()).replace('.','-')
+    
+    @classmethod
     def filetime(cls, extension=None) -> bool:
-        s = str(time.time()).replace('.','-')
+        s = cls.time_prefix()
         if extension:
             return s+"."+extension
         return s
     
-    def create_snapshot(self, image, folder, label) -> int:
+    def create_snapshot(self, image, folder, label, additional_data: Optional[Dict] = None) -> int:
         path = os.path.join(settings.TRAINING.training_folder(folder),label)
+        t = self.time_prefix()
         self.save_image(
             image, 
             path, 
-            self.filetime('jpg')
+            f"{t}_image.jpg"
             )
+        
+        if additional_data:
+            for k,v in additional_data.items():
+                self.save_dict(v, path, f"{t}_{k}.json")
+        
         return self.get_snapshots(folder)
     
     def get_snapshots(self, folder):
@@ -64,11 +91,20 @@ class ImageCollector:
         if not os.path.exists(path):
             os.makedirs(path)
         for p in os.listdir(path):
-            d[p.lower()] = len(os.listdir(os.path.join(path,p)))
+            d[p.lower()] = len(glob(os.path.join(path,p,"*.jpg")))
         return d
     
-    def save_tag(self, image, tag) -> int:
-        self.save_image(image, os.path.join(settings.TRAINING.tags_path,tag.lower()), self.filetime('jpg'))
+    def save_tag(self, image, tag, additional_data: Optional[Dict] = None) -> int:
+
+        path = os.path.join(settings.TRAINING.tags_path,tag.lower())
+        t = self.time_prefix()
+
+        self.save_image(image, path, f"{t}_image.jpg")
+
+        if additional_data:
+            for k,v in additional_data.items():
+                self.save_dict(v, path, f"{t}_{k.lower()}.json")
+
         return self.get_tags()
 
     def get_tags(self):
@@ -76,6 +112,7 @@ class ImageCollector:
         
         for p in os.listdir(settings.TRAINING.tags_path):
             d[p.lower()] = len(os.listdir(os.path.join(settings.TRAINING.tags_path,p)))
+
         return d
             
     def save_navigation_image(self, x: int, y:int, width:int, height: int, image) -> str:

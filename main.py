@@ -3,7 +3,7 @@
 import logging
 import os
 from flask_cors import CORS
-from flask import Flask, Response, request
+from flask import Flask, Response, request, jsonify
 from src.nodes.robot import Robot
 from settings import settings
 
@@ -78,6 +78,16 @@ def add_tag():
 @app.get('/api/tags')
 def get_tags():
     return app.robot.get_tags()
+
+@app.get('/api/lidar/scan')
+def get_lidar():
+    data = app.robot.get_lidar()
+    return {"scan": data.tolist()}
+
+@app.get('/api/image/raw')
+def get_image_raw():
+    image =  app.robot.get_raw_image()
+    return {"image_raw": image.tolist()}
 
 
 if __name__ == "__main__":

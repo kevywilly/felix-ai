@@ -14,6 +14,7 @@ from src.nodes.controller import Controller
 from src.nodes.camera import Camera
 import time
 import numpy as np
+import cv2
 
 from src.vision.image_collector import ImageCollector
 
@@ -81,13 +82,29 @@ class Robot(Node):
         self._controller.unobserve_all()
 
     def save_tag(self, tag):
-        return self._image_collector.save_tag(self.get_image(), tag)
+        saved = self._image_collector.save_tag(
+            self.get_image(), 
+            tag, 
+            {"scan": self.measurement.value.tolist()}
+        )
+        return saved
+    
+    def get_lidar(self):
+        return self.measurement.value
+    
+    def get_raw_image(self):
+        x = self._camera.value
+        return cv2.resize(x, (224,224), cv2.INTER_LINEAR)
     
     def get_tags(self):
         return self._image_collector.get_tags()
     
     def create_snapshot(self, folder, label):
-        return self._image_collector.create_snapshot(self.get_image(), folder, label)
+        return self._image_collector.create_snapshot(
+            self.get_image(), 
+            folder, label,
+            {"scan": self.measurement.value.tolist()}
+        )
     
     def get_snapshots(self, folder):
         return self._image_collector.get_snapshots(folder)
@@ -192,6 +209,8 @@ class Robot(Node):
     
     def _capture(self):
 
+        return
+    
         if not self.capture_when_driving:
             return
         

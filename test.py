@@ -16,16 +16,8 @@ for i, scan in enumerate(lidar.iter_scans()):
     print(f'\nITERATION: {i}')
     print("========================")
     ar = np.array(scan).astype(int)
-    #for item in scan:
-    #    data = 
-    #    print(f'confidence: {item[0]}, angle: {int(item[1])}, dist: {int(item[2])}')
-    ar2 = np.zeros((360,1))
-    
-    for measure in ar:
-        ar2[measure[1]] = [measure[2]]
-        ar3 = ar2.reshape(1,360).astype(int)
-    
-    logger.error(ar3)
+
+    #print(ar)
 
     if i > 10:
         break
