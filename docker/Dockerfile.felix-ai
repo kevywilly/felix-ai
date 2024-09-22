@@ -1,6 +1,4 @@
-FROM ai-base:latest as stage1
-
-ENV CUDA_HOME=/usr/local/cuda
+FROM dustynv/nano_llm:r36.2.0 as stage1
 
 WORKDIR /
 

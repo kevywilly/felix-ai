@@ -8,7 +8,7 @@ vehicle:
   gear_ratio: 56
   motor_voltage: 12
 peripherals:
-  yaboom: /dev/myserial
+  yaboom: /dev/ttyAMA0
   joy_dampening_mode: 1
 capture_when_driving: True
 autodrive:

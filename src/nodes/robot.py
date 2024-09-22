@@ -17,9 +17,6 @@ import numpy as np
 
 from src.vision.image_collector import ImageCollector
 
-class Measurement(traitlets.HasTraits):
-    value = traitlets.Any(allow_none=True)
-
 class CmdVel(traitlets.HasTraits):
     value = traitlets.Instance(Twist, allow_none=True)
     def numpy(self):
@@ -31,7 +28,6 @@ class CmdVel(traitlets.HasTraits):
 class Robot(Node):
 
     image = traitlets.Instance(Image)
-    measurement = traitlets.Instance(Measurement)
     cmd_vel = traitlets.Instance(CmdVel)
 
     capture_when_driving = traitlets.Bool(default_value=False)
@@ -49,20 +45,17 @@ class Robot(Node):
             SystemUtils.makedir(self.drive_data_path)
         
         self.image = Image()
-        self.measurement = Measurement()
         self.cmd_vel = CmdVel()
         self.cmd_zero = True
         self._image_collector = ImageCollector()
 
         # initialize nodes
         self._camera: Camera = Camera()
-        self._lidar: Lidar = Lidar()
         self._controller: Controller = Controller(frequency=30)
 
         # start nodes
         self._controller.spin()
         self._camera.spin()
-        self._lidar.spin()
         self.last_capture_time = time.time()
         # self._video_viewer: VideoViewer = VideoViewer()
         self._setup_subscriptions()
@@ -72,7 +65,6 @@ class Robot(Node):
     def _setup_subscriptions(self):
         traitlets.dlink((self._camera, 'value'), (self.image, 'value'), transform=ImageUtils.bgr8_to_jpeg)
         traitlets.dlink((self._camera, 'value'), (self._controller, 'camera_image'))
-        traitlets.dlink((self._lidar, 'value'), (self.measurement, 'value'))
         traitlets.dlink((self._controller, 'cmd_vel'), (self.cmd_vel, 'value'))
         # traitlets.dlink((self._camera, 'value'), (self._video_viewer, 'camera_image'))
 
@@ -164,21 +156,11 @@ class Robot(Node):
     def spinner(self):
         self._capture()
         
-    def _prepare_lidar_data(self) -> np.ndarray:
-
-        ar = np.zeros((360))
-
-        for measure in self.measurement.value:
-            ar[measure[1]] = measure[2]
-            
-        return ar
-
 
     def _prepare_nav_data(self) -> np.ndarray:
         
         return np.concatenate(
             (
-                self._prepare_lidar_data(),
                 self._controller.attitude_data.numpy(),
                 self._controller.gyroscope_data.numpy(),
                 self._controller.accelerometer_data.numpy(),
@@ -191,7 +173,7 @@ class Robot(Node):
         return min(self._nav_data[:3] == nav_data[:3]) 
     
     def _capture(self):
-
+        return
         if not self.capture_when_driving:
             return
         
@@ -201,9 +183,6 @@ class Robot(Node):
             return
         
         self.last_capture_time = t
-        
-        if self.measurement.value is None or self.cmd_vel.value is None:
-            return
 
         if self.cmd_vel.value.is_zero() and self.cmd_zero:
             return
@@ -241,25 +220,6 @@ class Robot(Node):
             except Exception as ex:
                 self.logger.error(ex)
                 return None
-            
-    def _save_lidar_data_to_csv(self, image_filepath: str, lidar_data: np.ndarray):
-
-        data_filepath = image_filepath.replace('.jpg', ".lidar.csv")
-       
-        csv = ",".join(
-            [f"{item}" for item in lidar_data[0]]
-        ) 
-
-        self.logger.info(f"writing data to {data_filepath}")
-        with open(data_filepath, 'w') as f:
-            try:
-                f.write(csv)
-                self._lidar_data = lidar_data
-                return data_filepath
-            except Exception as ex:
-                self.logger.error(ex)
-                return None
-
 
 
 
