@@ -1,9 +1,9 @@
-import numpy as np
-from typing import List, Dict
 import os
+import numpy as np
+from pathlib import Path
+from typing import List, Dict
 from src.motion.vehicle import MecanumVehicle
 from src.utils.format import comment_block
-
 from src.vision.sensors import CameraSensor
 
 import yaml
@@ -85,5 +85,7 @@ class AppSettings:
         with open(config_file,'r') as f:
             return yaml.safe_load(f)
 
-settings = AppSettings(f'config/{ROBOT}.yml')
+
+path = Path(__file__).parent.absolute()
+settings = AppSettings(os.path.join(path,"config",f'{ROBOT}.yml'))
 
