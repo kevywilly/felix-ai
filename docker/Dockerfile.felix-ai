@@ -9,8 +9,8 @@ WORKDIR /
 COPY ./scripts/entrypoint.sh /
 COPY ./scripts/felix.sh /
 
-RUN apt-get update && apt-get -y install nginx vim \
-    && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && apt-get -y install nginx vim \
+#    && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
 RUN pip3 install --no-cache-dir --verbose \ 
@@ -23,11 +23,11 @@ RUN pip3 install --no-cache-dir --verbose \
 
 FROM stage1 as stage2
 
-COPY ./config/nginx.conf /etc/nginx/sites-enabled/default
+#COPY ./config/nginx.conf /etc/nginx/sites-enabled/default
 
-RUN echo "INSTALL NANO-CONTROL"
-RUN git clone https://github.com/kevywilly/nano-control -b felix
-RUN ln -s /nano-control/build /var/www/build
+#RUN echo "INSTALL NANO-CONTROL"
+#RUN git clone https://github.com/kevywilly/nano-control -b felix
+#RUN ln -s /nano-control/build /var/www/build
 
 RUN echo "source /entrypoint.sh" >> /root/.bashrc
 
