@@ -1,4 +1,5 @@
-FROM ai-base:latest as stage1
+#FROM ai-base:latest as stage1
+FROM dustynv/nano_llm:r36.3.0 as stage1
 
 ENV CUDA_HOME=/usr/local/cuda
 
