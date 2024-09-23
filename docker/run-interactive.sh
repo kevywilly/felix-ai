@@ -59,9 +59,7 @@ if [ $ARCH = "aarch64" ]; then
 		--device /dev/snd \
 		--device /dev/bus/usb \
 		--device /dev/myserial \
-		--device /dev/rplidar \
 		--device /dev/ttyUSB0 \
-		--device /dev/ttyUSB1 \
 		$DATA_VOLUME $DISPLAY_DEVICE $V4L2_DEVICES \
 		"$@"
 
