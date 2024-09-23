@@ -16,7 +16,7 @@ class ImageCollector:
 
     def _make_folders(self):
         try:
-            os.makedirs(settings.TRAINING.tags_path)
+            os.makedirs(settings.TRAINING.tags_path, exist_ok=True)
         except FileExistsError:
             pass
 

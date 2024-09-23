@@ -8,3 +8,4 @@ opencv-python
 pyaml
 numpy
 Pillow
+pyserial

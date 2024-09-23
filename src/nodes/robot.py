@@ -1,16 +1,17 @@
 import os
 from typing import Dict, Optional
+from src.mock.controller import MockController
 from src.utils.system import SystemUtils
 import traitlets
 from settings import settings
 from src.motion.joystick import Joystick
 from src.motion.kinematics import Kinematics
-# from src.nodes.video_viewer import VideoViewer
 from src.vision.image import Image, ImageUtils
 from src.interfaces.msg import Odometry, Twist, Vector3
 from src.nodes.node import Node
 from src.nodes.controller import Controller
 from src.nodes.camera import Camera
+from src.mock.camera import Camera as MockCamera
 import time
 import numpy as np
 import cv2
@@ -50,27 +51,40 @@ class Robot(Node):
         self._image_collector = ImageCollector()
 
         # initialize nodes
-        self._camera: Camera = Camera()
-        self._controller: Controller = Controller(frequency=30)
-
-        # start nodes
-        self._controller.spin()
+        try:
+            self._camera: Camera = Camera()
+        except:  # noqa: E722
+            self.logger.info("using mock camera")
+            self._camera = MockCamera()
         self._camera.spin()
+
+        try:
+            self._controller: Controller = Controller(frequency=30)
+        except Exception as ex:
+            self._controller = MockController(frequeny=30)
+            
+        self._controller.spin()
+
         self.last_capture_time = time.time()
-        # self._video_viewer: VideoViewer = VideoViewer()
+
         self._setup_subscriptions()
 
         self.loaded()
 
     def _setup_subscriptions(self):
-        traitlets.dlink((self._camera, 'value'), (self.image, 'value'), transform=ImageUtils.bgr8_to_jpeg)
-        traitlets.dlink((self._camera, 'value'), (self._controller, 'camera_image'))
-        traitlets.dlink((self._controller, 'cmd_vel'), (self.cmd_vel, 'value'))
-        # traitlets.dlink((self._camera, 'value'), (self._video_viewer, 'camera_image'))
+        if self._camera is not None:
+            traitlets.dlink((self._camera, 'value'), (self.image, 'value'), transform=ImageUtils.bgr8_to_jpeg)
+            if self._controller is not None:
+                traitlets.dlink((self._camera, 'value'), (self._controller, 'camera_image'))
+        if self._controller is not None:
+            traitlets.dlink((self._controller, 'cmd_vel'), (self.cmd_vel, 'value'))
+        
 
     def shutdown(self):
-        self._camera.unobserve_all()
-        self._controller.unobserve_all()
+        if self._camera is not None:
+            self._camera.unobserve_all()
+        if self._controller is not None:
+            self._controller.unobserve_all()
 
     def save_tag(self, tag):
         saved = self._image_collector.save_tag(
@@ -80,8 +94,9 @@ class Robot(Node):
         return saved
     
     def get_raw_image(self):
-        x = self._camera.value
-        return cv2.resize(x, (224,224), cv2.INTER_LINEAR)
+        if self._camera is not None:
+            x = self._camera.value
+            return cv2.resize(x, (224,224), cv2.INTER_LINEAR)
     
     def get_tags(self):
         return self._image_collector.get_tags()
@@ -112,8 +127,8 @@ class Robot(Node):
         return t
 
     def handle_joystick(self, data: Dict) -> Twist:
-        x = float(data.get('event',{}).get('x',0))
-        y = float(data.get('event',{}).get('y',0))
+        x = float(data.get('x',0))
+        y = float(data.get('y',0))
         strafe = float(data.get('strafe', False))
         t = Joystick.get_twist(x,y, strafe)
         self.set_cmd_vel(t)

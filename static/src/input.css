@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@tailwind typography;
+
+@layer components {
+
+    .section-header {
+        @apply prose-sm text-center bg-blue-400  font-semibold
+    }
+    .button {
+        @apply px-2 py-1 rounded-md text-center font-semibold
+    }
+
+    .button-blue {
+        @apply button bg-blue-500 text-white
+    }
+
+    .button-white {
+        @apply button bg-white text-blue-800
+    }
+
+    .button-red {
+        @apply button bg-red-600 text-white
+    }
+
+    .input {
+        @apply  w-[50px] border px-2 py-1 rounded-md w-full
+    }
+
+    .input-center {
+        @apply  w-[50px] border rounded-md w-full text-center
+    }
+
+    .data-grid-4 {
+        @apply grid grid-cols-4 border rounded-md text-xs [&>div]:text-center
+    }
+
+    .slider {
+        @apply flex flex-row gap-x-2 items-end [&>span]:text-xs [&>span]:font-semibold [&>input]:flex-grow p-2
+    }
+
+    .slider-vertical {
+        @apply slider flex-col items-center
+    }
+}

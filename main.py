@@ -3,7 +3,7 @@
 import logging
 import os
 from flask_cors import CORS
-from flask import Flask, Response, request, jsonify
+from flask import Flask, Response, request, jsonify, render_template
 from src.nodes.robot import Robot
 from settings import settings
 
@@ -22,9 +22,13 @@ cors = CORS(app, resource={
     }
 })
 
-@app.route('/')
-def index():
+@app.route('/healthcheck')
+def healthcheck():
     return {"status": "ok"}
+
+@app.get('/')
+def _index():
+    return render_template('index.html')
 
 @app.route('/api/stream')
 def stream():
@@ -79,11 +83,6 @@ def add_tag():
 def get_tags():
     return app.robot.get_tags()
 
-@app.get('/api/lidar/scan')
-def get_lidar():
-    data = app.robot.get_lidar()
-    return {"scan": data.tolist()}
-
 @app.get('/api/image/raw')
 def get_image_raw():
     image =  app.robot.get_raw_image()
@@ -93,4 +92,4 @@ def get_image_raw():
 if __name__ == "__main__":
     app.robot = Robot(capture_when_driving=settings.capture_when_driving)
     app.robot.spin(frequency=0.5)
-    app.run(host='0.0.0.0', debug=False)
+    app.run(host='0.0.0.0', port=80, debug=True)

@@ -17,7 +17,7 @@ def join(loader, node):
 yaml.add_constructor('!join', join)
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
 
-ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixV2'
+ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixMac'
 print(comment_block(f'Robot = {ROBOT}'))
 
 if not(ROBOT):
