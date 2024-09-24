@@ -24,6 +24,38 @@ def dampen_joystick(value, max_input=1, min_input=0) -> float:
     result = ((abs(value) - min_input) ** 2) / (max_input - min_input) + min_input
     return result * sign
 
+class JoystickNonLinearDampener:
+    def __init__(self, curve_factor=0.5):
+        """
+        curve_factor: Controls the responsiveness.
+                      Lower values (e.g., 0.5) mean more responsive at lower speeds,
+                      but slower increase at higher speeds.
+        """
+        self.curve_factor = curve_factor
+        self.prev_x = 0.0
+        self.prev_y = 0.0
+
+    def apply(self, input_x, input_y):
+
+        # Ensure the input is in the valid range (-1.0, 1.0) for both x and y
+        input_x = max(min(input_x, 1.0), -1.0)
+        input_y = max(min(input_y, 1.0), -1.0)
+
+        # Apply non-linear dampening using an exponential response curve
+        dampened_x = input_x * (abs(input_x) ** self.curve_factor)
+        dampened_y = input_y * (abs(input_y) ** self.curve_factor)
+
+        # Optional smoothing using previous values (low-pass filter) for extra smoothness
+        smoothed_x = 0.0 if input_x == 0 else (0.9 * dampened_x) + (0.1 * self.prev_x)
+        smoothed_y = 0.0 if input_x == 0 else (0.9 * dampened_y) + (0.1 * self.prev_y)
+
+        # Store the smoothed values for the next frame
+        self.prev_x = smoothed_x
+        self.prev_y = smoothed_y
+
+        return smoothed_x, smoothed_y
+
+
 class CmdVel(traitlets.HasTraits):
     value = traitlets.Instance(Twist, allow_none=True)
     def numpy(self):
@@ -51,6 +83,8 @@ class Robot(Node):
         if self.capture_when_driving:
             SystemUtils.makedir(self.drive_data_path)
         
+        self.dampener = JoystickNonLinearDampener()
+        
         self.image = Image()
         self.cmd_vel = CmdVel()
         self.cmd_zero = True
@@ -67,13 +101,15 @@ class Robot(Node):
         try:
             self._controller: Controller = Controller(frequency=30)
         except Exception as ex:
-            self._controller = MockController(frequeny=30)
+            self._controller = MockController(frequency=30)
             
         self._controller.spin()
 
         self.last_capture_time = time.time()
 
         self._setup_subscriptions()
+
+        
 
         self.loaded()
 
@@ -134,10 +170,12 @@ class Robot(Node):
 
 
     def handle_joystick(self, data: Dict) -> Twist:
-        x = dampen_joystick(float(data.get('x',0)))
-        y = dampen_joystick(float(data.get('y',0)))
+        x = float(data.get('x',0))
+        y = float(data.get('y',0))
         strafe = float(data.get('strafe', False))
-        t = Joystick.get_twist(x,y, strafe)
+        _x, _y = self.dampener.apply(x, y)
+        
+        t = Joystick.get_twist(_x, _y, strafe)
         self.set_cmd_vel(t)
         return t
     
