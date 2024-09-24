@@ -18,6 +18,12 @@ import cv2
 
 from src.vision.image_collector import ImageCollector
 
+def dampen_joystick(value, max_input=1, min_input=0) -> float:
+    sign = 1 if value >=0 else -1
+    value = max(min(abs(value), max_input), min_input)
+    result = ((abs(value) - min_input) ** 2) / (max_input - min_input) + min_input
+    return result * sign
+
 class CmdVel(traitlets.HasTraits):
     value = traitlets.Instance(Twist, allow_none=True)
     def numpy(self):
@@ -126,9 +132,10 @@ class Robot(Node):
         self.set_cmd_vel(t)
         return t
 
+
     def handle_joystick(self, data: Dict) -> Twist:
-        x = float(data.get('x',0))
-        y = float(data.get('y',0))
+        x = dampen_joystick(float(data.get('x',0)))
+        y = dampen_joystick(float(data.get('y',0)))
         strafe = float(data.get('strafe', False))
         t = Joystick.get_twist(x,y, strafe)
         self.set_cmd_vel(t)
