@@ -83,7 +83,7 @@ class Robot(Node):
         if self.capture_when_driving:
             SystemUtils.makedir(self.drive_data_path)
         
-        self.dampener = JoystickNonLinearDampener()
+        self.dampener = JoystickNonLinearDampener(0.25)
         
         self.image = Image()
         self.cmd_vel = CmdVel()
