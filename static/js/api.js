@@ -5,6 +5,8 @@ let capture = false;
 let autodrive = false;
 let autonav = false;
 
+let joyData = { x: 0, y: 0, strafe: strafe };
+
 const post = (url, data, callback = null) => {
     payload = JSON.stringify(data);
     $.ajax({
@@ -49,7 +51,8 @@ const createSnapshot = (label) => {
 }
 
 const handleJoystick = (stickData) => {
-    post("api/joystick", {...stickData, strafe});
+    joyData = {x: parseFloat(stickData.x)/100.0, y: parseFloat(stickData.y)/100.0, strafe: strafe}
+    post("api/joystick", joyData);
 }
 
 $(function () {

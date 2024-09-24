@@ -92,4 +92,4 @@ def get_image_raw():
 if __name__ == "__main__":
     app.robot = Robot(capture_when_driving=settings.capture_when_driving)
     app.robot.spin(frequency=0.5)
-    app.run(host='0.0.0.0', port=80, debug=True)
+    app.run(host='0.0.0.0', port=80, debug=False)
