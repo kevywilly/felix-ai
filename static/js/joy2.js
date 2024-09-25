@@ -279,7 +279,7 @@ var JoyStick = (function (container, parameters, callback) {
 
     function onMouseUp(event) {
       
-        if (event.target.id !== 'Control') {
+        if (event.target.id !== title) {
             return;
         }
 

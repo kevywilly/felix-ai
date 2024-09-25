@@ -1,6 +1,5 @@
 import os
 from typing import Dict, Optional
-from src.mock.controller import MockController
 from src.utils.system import SystemUtils
 import traitlets
 from settings import settings
@@ -98,10 +97,7 @@ class Robot(Node):
             self._camera = MockCamera()
         self._camera.spin()
 
-        try:
-            self._controller: Controller = Controller(frequency=30)
-        except Exception as ex:
-            self._controller = MockController(frequency=30)
+        self._controller: Controller = Controller(frequency=30)
             
         self._controller.spin()
 

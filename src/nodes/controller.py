@@ -1,16 +1,18 @@
 
 from typing import Optional
 import traitlets
-from src.motion.autodriver import AutoDriver, BinaryObstacleAvoider, TernaryObstacleAvoider
-from src.motion.vehicle import MecanumVehicle, Vehicle
 from src.nodes.node import Node
 from src.interfaces.msg import Odometry, Twist, Vector3
-from src.motion.rosmaster import Rosmaster
-import atexit
+from settings import settings
+
+if settings.ROBOT == 'felixMac':
+    from src.mock.rosmaster import MockRosmaster as Rosmaster
+else:
+    from src.motion.rosmaster import Rosmaster
+
 import numpy as np
 import time
-from copy import deepcopy
-from settings import settings
+
 
 class Controller(Node):
 
@@ -112,16 +114,6 @@ class Controller(Node):
         self.logger.info(f"power: {pow}")
 
         self.last_cmd = cmd
-        
-
-    def _apply_cmd_vel2(self, cmd):
-    
-        vx, vy, omega = self._scale_cmd_vel(cmd)
-        print(vx,vy,omega)
-       
-
-        self._bot.set_car_motion(vx, vy, omega)
-        self.last_cmd = cmd
        
 
     def _reset_nav(self):
@@ -173,5 +165,4 @@ class Controller(Node):
     @traitlets.observe('nav_target')
     def _nav_target_change(self, change):
         if change.new:
-            pass
-            #self._apply_nav_target(change.new)
+            self._apply_nav_target(change.new)

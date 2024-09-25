@@ -9,15 +9,19 @@
         @apply prose-sm text-center bg-blue-400  font-semibold
     }
     .button {
-        @apply px-2 py-1 rounded-md text-center font-semibold
+        @apply px-2 py-1 rounded-sm text-center font-light
     }
 
     .button-blue {
         @apply button bg-blue-500 text-white
     }
 
+    .button-dark {
+        @apply button bg-stone-800 text-stone-50 hover:bg-stone-500
+    }
+
     .button-white {
-        @apply button bg-white text-blue-800
+        @apply button border-gray-50 text-blue-800
     }
 
     .button-red {
@@ -44,3 +48,10 @@
         @apply slider flex-col items-center
     }
 }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #101010;
+    color: #f0f0f0;
+}
+

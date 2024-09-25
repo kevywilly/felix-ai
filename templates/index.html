@@ -10,26 +10,27 @@
 </head>
 <body>
 <div class="flex flex-col gap-2 pt-2 w-full items-center">
-    <div class="flex flex-col items-center w-1/2 px-2 py-2 text-white gap-y-2 bg-black rounded-md">
+    <div class="flex flex-col items-center w-1/2 px-2 py-2 gap-y-2 rounded-md">
+        <div class="my-0.5" id="coordinatesDisplay">Coordinates: (x, y)</div>
         <div class="flex flex-row  w-full">
-            <img src="api/stream" class="aspect-video">
+            <img id="navImage" src="api/stream" class="aspect-video">
         </div>
-        <div class="flex flex-row justify justify-between w-full">
-            <button class="button-blue" id="btnLeft">Left</button>
-            <button class="button-blue" id="btnForward">Forward</button>
-            <button class="button-blue" id="btnRight">Right</button>
+        <div class="flex flex-row justify justify-between w-full gap-x-4">
+            <button class="button-dark  w-full" id="btnLeft">Left</button>
+            <button class="button-dark  w-full" id="btnForward">Forward</button>
+            <button class="button-dark  w-full" id="btnRight">Right</button>
         </div>
     </div>
-    <div class="flex flex-row justify justify-between w-1/2 bg-white">
-        <button class="button-blue w-1/5" id="btnCapture">Capture</button>
-        <button class="button-blue w-1/5" id="btnStrafe">Strafe</button>
-        <button class="button-blue w-1/5" id="btnAutoDrive">Auto Drive</button>
-        <button class="button-blue w-1/5" id="btnAutoNav">Auto Nav</button>
+    <div class="flex flex-row justify justify-between w-1/2 gap-x-4">
+        <button class="button-dark  w-full" id="btnCapture">Capture</button>
+        <button class="button-dark  w-full" id="btnStrafe">Strafe</button>
+        <button class="button-dark  w-full" id="btnAutoDrive">Auto Drive</button>
+        <button class="button-dark  w-full" id="btnAutoNav">Auto Nav</button>
     </div>
-    
     <div class="flex flex-row justify-around gap-32">
-        <div id="joy1" style="width:300px;height:300px;"></div>
+        <div id="joy1" style="width:220px;height:220px;"></div>
     </div>
+   
 </div>
 </body>
 </html>
@@ -37,6 +38,6 @@
         src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
         crossorigin="anonymous"></script>
-<script src="{{url_for('static', filename='js/joy2.js')}}"></script>
+<script src="{{url_for('static', filename='js/joy2.min.js')}}"></script>
 <script src="{{url_for('static', filename='js/api.js')}}"></script>
 <script src="{{url_for('static', filename='js/control.js')}}"></script>

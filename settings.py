@@ -2,7 +2,7 @@ import os
 import numpy as np
 from pathlib import Path
 from typing import List, Dict
-from src.motion.vehicle import MecanumVehicle
+from src.motion.vehicle import MecanumVehicle, DifferentialDriveVehicle
 from src.utils.format import comment_block
 from src.vision.sensors import CameraSensor
 
@@ -17,10 +17,10 @@ def join(loader, node):
 yaml.add_constructor('!join', join)
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
 
-ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixV2'
-print(comment_block(f'Robot = {ROBOT}'))
+_ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixV2'
+print(comment_block(f'Robot = {_ROBOT}'))
 
-if not(ROBOT):
+if not(_ROBOT):
     raise Exception("Environment variable ROBOT not set, use either ROBOT=felixV1 or ROBOT=felixV2")
     exit()
 
@@ -49,7 +49,7 @@ class AppSettings:
         
         self.TRAINING = TrainingConfig(config)
 
-        self.VEHICLE = MecanumVehicle(
+        self.VEHICLE = DifferentialDriveVehicle(
             min_rpm = config.get('vehicle').get('min_rpm',0),
             max_rpm = config.get('vehicle').get('max_rpm',205),
             wheel_radius = config.get('vehicle').get('wheel_radius'),
@@ -78,7 +78,9 @@ class AppSettings:
         self.autodrive_angular = config.get('autodrive').get('angular')
         self.capture_when_driving = config.get('capture_when_driving', False)
         
-        DEBUG: bool = config.get('debug')
+        self.DEBUG: bool = config.get('debug')
+
+        self.ROBOT: str = _ROBOT
 
     
     def load_config(self, config_file) -> Dict:
@@ -87,5 +89,5 @@ class AppSettings:
 
 
 path = Path(__file__).parent.absolute()
-settings = AppSettings(os.path.join(path,"config",f'{ROBOT}.yml'))
+settings = AppSettings(os.path.join(path,"config",f'{_ROBOT}.yml'))
 

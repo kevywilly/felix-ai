@@ -1,9 +1,13 @@
+const NAVZERO = { x: 0, y: 0, w: 0, h: 0 }
+const SNAPSHOT_FOLDER = 'ternary'
+
+
 let snapshots = { forward: 0, left: 0, right: 0 };
 
 let strafe = false;
-let capture = false;
 let autodrive = false;
-let autonav = false;
+let captureMode = false;
+let driveMode = false;
 
 let joyData = { x: 0, y: 0, strafe: strafe };
 
@@ -42,7 +46,7 @@ const displaySnapshots = (data) => {
 }
 
 const getSnapshots = () => {
-    get("api/snapshots/ternary", displaySnapshots);
+    get(`api/snapshots/${SNAPSHOT_FOLDER}`, displaySnapshots);
 }
 
 const createSnapshot = (label) => {
@@ -51,20 +55,42 @@ const createSnapshot = (label) => {
 }
 
 const handleJoystick = (stickData) => {
-    joyData = {x: parseFloat(stickData.x)/100.0, y: parseFloat(stickData.y)/100.0, strafe: strafe}
+    joyData = { x: parseFloat(stickData.x) / 100.0, y: parseFloat(stickData.y) / 100.0, strafe: strafe }
     post("api/joystick", joyData);
 }
 
+const handleNavImageClick = (event) => {
+    // Get the position of the image
+    const rect = this.getBoundingClientRect();
+
+    // Calculate the x and y coordinates relative to the image
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Display the coordinates
+    $('#coordinatesDisplay').text(`Coordinates: (${x}, ${y})`);
+}
+
+const captureButtons = [
+    { id: "btnLeft", label: "left" },
+    { id: "btnRight", label: "right" },
+    { id: "btnForward", label: "forward" }
+];
+
+const joy1 = new JoyStick('joy1', {
+    "title": "joy1",
+    internalFillColor: "#656565",
+    externalStrokeColor: "#999999",
+}, handleJoystick);
+
+
 $(function () {
-    $("#btnLeft").on("click", () => {
-        createSnapshot("left");
-    })
-    $("#btnRight").on("click", () => {
-        createSnapshot("right");
-    })
-    $("#btnForward").on("click", () => {
-        createSnapshot("forward");
-    })
+
+    for (let button of captureButtons) {
+        $(`#${button.id}`).on("click", () => {
+            createSnapshot(button.label);
+        });
+    }
 
     $("#btnStrafe").on("click", () => {
         strafe = !strafe;
@@ -75,26 +101,49 @@ $(function () {
         displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
     })
     $("#btnAutoNav").on("click", () => {
-        autonav = !autonav;
-        displayToggleButton("btnAutoNav", autonav, "Auto Nav");
+        driveMode = !driveMode;
+        displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
     })
     $("#btnCapture").on("click", () => {
-        capture = !capture;
-        displayToggleButton("btnCapture", capture, "Capture");
+        captureMode = !captureMode;
+        displayToggleButton("btnCapture", captureMode, "Capture");
     })
-   
+
+    $('#navImage').click(function (event) {
+        // Get the position of the image
+        const rect = this.getBoundingClientRect();
+
+        console.log(rect)
+        // Display the coordinates
+
+        // Calculate the x and y coordinates relative to the image
+        const w = rect.width
+        const h = rect.height
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        cmd = { x, y, w, h };
+
+        if (captureMode || driveMode) {
+            request = { cmd, captureMode: captureMode, driveMode: driveMode };
+            post("api/navigate", request, (data) => {
+                console.log(data);
+            });
+        }
+
+        $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${x} h:${y}`);
+
+    });
+
     getSnapshots()
 
     displayToggleButton("btnStrafe", strafe, "Strafe");
-    displayToggleButton("btnCapture", capture, "Capture");
+    displayToggleButton("btnCapture", captureMode, "Capture");
     displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
-    displayToggleButton("btnAutoNav", autonav, "Auto Nav");
+    displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
 
 });
 
-var joy1 = new JoyStick('joy1', {
-    "title": "Control",
-    internalFillColor: "#0000FF",
-    externalStrokeColor: "#0000FF",
-}, handleJoystick);
+
+
 
