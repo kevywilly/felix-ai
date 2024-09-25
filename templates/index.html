@@ -10,7 +10,7 @@
 </head>
 <body>
 <div class="flex flex-col gap-2 pt-2 w-full items-center">
-    <div class="flex flex-col items-center w-1/2 px-2 py-2 gap-y-2 rounded-md">
+    <div class="flex flex-col items-center w-full xl:w-1/2 px-2 py-2 gap-y-2 rounded-md">
         <div class="my-0.5" id="coordinatesDisplay">Coordinates: (x, y)</div>
         <div class="flex flex-row  w-full">
             <img id="navImage" src="api/stream" class="aspect-video">
@@ -27,8 +27,10 @@
         <button class="button-dark  w-full" id="btnAutoDrive">Auto Drive</button>
         <button class="button-dark  w-full" id="btnAutoNav">Auto Nav</button>
     </div>
-    <div class="flex flex-row justify-around gap-32">
+    <div class="flex flex-row justify-between items-center gap-32">
+        <button class="button-red w-full" id="btnStop1" onclick="stop();">Stop</button>
         <div id="joy1" style="width:220px;height:220px;"></div>
+        <button class="button-red w-full" id="btnStop2" onclick="stop();">Stop</button>
     </div>
    
 </div>

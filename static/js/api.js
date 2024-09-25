@@ -109,12 +109,14 @@ $(function () {
         displayToggleButton("btnCapture", captureMode, "Capture");
     })
 
-    $('#navImage').click(function (event) {
+    $("#navImage").on("dblclick", () => {
+        stop();
+    })
+
+
+    $('#navImage').on("click", (event) => {
         // Get the position of the image
         const rect = this.getBoundingClientRect();
-
-        console.log(rect)
-        // Display the coordinates
 
         // Calculate the x and y coordinates relative to the image
         const w = rect.width

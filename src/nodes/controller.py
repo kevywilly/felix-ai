@@ -119,15 +119,15 @@ class Controller(Node):
     def _reset_nav(self):
         self.nav_delta = 0
         self.nav_delta_target = 0
-        self.nav_yaw = self.bot.get_imu_attitude_data()[2]
+        self.nav_yaw = self._bot.get_imu_attitude_data()[2]
         self.nav_start_time = time.time()
-        self.bot.set_car_motion(0,0,0)
+        self._bot.set_car_motion(0,0,0)
 
 
     def _start_nav(self):
         self.nav_delta = 0
         self.nav_delta_target = 0
-        self.nav_yaw = self.bot.get_imu_attitude_data()[2]
+        self.nav_yaw = self._bot.get_imu_attitude_data()[2]
         self.nav_start_time = time.time()
 
 
@@ -165,4 +165,4 @@ class Controller(Node):
     @traitlets.observe('nav_target')
     def _nav_target_change(self, change):
         if change.new:
-            self._apply_nav_target(change.new)
+            self._apply_nav_target()
