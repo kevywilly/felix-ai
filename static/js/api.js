@@ -34,6 +34,8 @@ const get = (url, callback = null) => {
 }
 
 const displayToggleButton = (id, state, label) => {
+    $(`#${id}`).css("background-color", state ? "green" : "#222222");
+    
     $(`#${id}`).text(`${label}: ${state ? "ON" : "OFF"}`);
 }
 
@@ -54,21 +56,19 @@ const createSnapshot = (label) => {
         `api/snapshots/ternary/${label}`, null, displaySnapshots);
 }
 
-const handleJoystick = (stickData) => {
-    joyData = { x: parseFloat(stickData.x) / 100.0, y: parseFloat(stickData.y) / 100.0, strafe: strafe }
-    post("api/joystick", joyData);
+const applyJoyData = () => {
+    post("api/joystick", joyData, (data) => {
+        console.log(data);
+    });
+}
+const stop = () => {
+    joyData = { x: 0, y: 0, strafe: strafe }
+    applyJoyData();
 }
 
-const handleNavImageClick = (event) => {
-    // Get the position of the image
-    const rect = this.getBoundingClientRect();
-
-    // Calculate the x and y coordinates relative to the image
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    // Display the coordinates
-    $('#coordinatesDisplay').text(`Coordinates: (${x}, ${y})`);
+const handleJoystick = (stickData) => {
+    joyData = { x: parseFloat(stickData.x) / 100.0, y: parseFloat(stickData.y) / 100.0, strafe: strafe }
+    applyJoyData();
 }
 
 const captureButtons = [
@@ -83,6 +83,31 @@ const joy1 = new JoyStick('joy1', {
     externalStrokeColor: "#999999",
 }, handleJoystick);
 
+
+const displayCoordinates = (x,y,w,h) => {
+    $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${x} h:${y}`);
+}
+
+const handleNavImageClick = (event) => {
+    const rect = event.target.getBoundingClientRect();
+
+    // Calculate the x and y coordinates relative to the image
+    const w = rect.width
+    const h = rect.height
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    cmd = { x, y, w, h };
+
+    if (captureMode || driveMode) {
+        request = { cmd, captureMode: captureMode, driveMode: driveMode };
+        post("api/navigate", request, (data) => {
+            console.log(data);
+        });
+    }
+
+    displayCoordinates(x, y, w, h);
+}
 
 $(function () {
 
@@ -113,29 +138,7 @@ $(function () {
         stop();
     })
 
-
-    $('#navImage').on("click", (event) => {
-        // Get the position of the image
-        const rect = this.getBoundingClientRect();
-
-        // Calculate the x and y coordinates relative to the image
-        const w = rect.width
-        const h = rect.height
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-
-        cmd = { x, y, w, h };
-
-        if (captureMode || driveMode) {
-            request = { cmd, captureMode: captureMode, driveMode: driveMode };
-            post("api/navigate", request, (data) => {
-                console.log(data);
-            });
-        }
-
-        $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${x} h:${y}`);
-
-    });
+    $('#navImage').on("click", handleNavImageClick)
 
     getSnapshots()
 
@@ -143,6 +146,7 @@ $(function () {
     displayToggleButton("btnCapture", captureMode, "Capture");
     displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
     displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
+    displayCoordinates("-","-","-","-");
 
 });
 

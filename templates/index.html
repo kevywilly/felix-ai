@@ -9,30 +9,31 @@
     <link rel="stylesheet" href="{{url_for('static',filename='css/output.css')}}">
 </head>
 <body>
-<div class="flex flex-col gap-2 pt-2 w-full items-center">
-    <div class="flex flex-col items-center w-full xl:w-1/2 px-2 py-2 gap-y-2 rounded-md">
-        <div class="my-0.5" id="coordinatesDisplay">Coordinates: (x, y)</div>
-        <div class="flex flex-row  w-full">
-            <img id="navImage" src="api/stream" class="aspect-video">
+<div class="flex flex-row gap-2 pt-2 w-full items-center justify-center">
+    <div class="flex flex-col w-full lg:w-1/2 items-center">
+        <div class="image-nav-container">
+            <div class="coordinates" id="coordinatesDisplay"></div>
+            <div class="flex flex-row  w-full">
+                <img id="navImage" src="api/stream" class="aspect-video">
+            </div>
+            <div class="capture-buttons-container">
+                <button class="button-dark w-full" id="btnLeft">Left</button>
+                <button class="button-dark w-full" id="btnForward">Forward</button>
+                <button class="button-dark w-full" id="btnRight">Right</button>
+            </div>
         </div>
-        <div class="flex flex-row justify justify-between w-full gap-x-4">
-            <button class="button-dark  w-full" id="btnLeft">Left</button>
-            <button class="button-dark  w-full" id="btnForward">Forward</button>
-            <button class="button-dark  w-full" id="btnRight">Right</button>
-        </div>
+    <div class="settings-buttons-container">
+        <button class="button-dark w-full" id="btnCapture">Capture</button>
+        <button class="button-dark w-full" id="btnStrafe">Strafe</button>
+        <button class="button-dark w-full" id="btnAutoDrive">Auto Drive</button>
+        <button class="button-dark w-full" id="btnAutoNav">Auto Nav</button>
     </div>
-    <div class="flex flex-row justify justify-between w-1/2 gap-x-4">
-        <button class="button-dark  w-full" id="btnCapture">Capture</button>
-        <button class="button-dark  w-full" id="btnStrafe">Strafe</button>
-        <button class="button-dark  w-full" id="btnAutoDrive">Auto Drive</button>
-        <button class="button-dark  w-full" id="btnAutoNav">Auto Nav</button>
+    <div class="joystick-container">
+        <button class="button-red w-1/4" id="btnStop1" onclick="stop();">Stop</button>
+        <div id="joy1" style="width:200px;height:200px;"></div>
+        <button class="button-red w-1/4" id="btnStop2" onclick="stop();">Stop</button>
     </div>
-    <div class="flex flex-row justify-between items-center gap-32">
-        <button class="button-red w-full" id="btnStop1" onclick="stop();">Stop</button>
-        <div id="joy1" style="width:220px;height:220px;"></div>
-        <button class="button-red w-full" id="btnStop2" onclick="stop();">Stop</button>
-    </div>
-   
+</div>
 </div>
 </body>
 </html>

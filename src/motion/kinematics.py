@@ -40,10 +40,13 @@ class Kinematics:
 
         max_x = 0.1
         max_z = 0.2
-        
+
         turn_factor = (degrees/(fov/2.0))
-        _vx = float((1-abs(turn_factor)))*0.2
-        _vz = float(turn_factor*-1)*0.3
+
+        print(turn_factor)
+        
+        _vx = float((1-abs(turn_factor)))*.8
+        _vz = float(turn_factor*-1)*1.6
 
         angle = float(math.radians(_x*fov))
 
@@ -52,6 +55,7 @@ class Kinematics:
         odom.twist.angular.z = _vz
         odom.pose.orientation.z = radians
 
+        print(_x,_y,_vx,_vz,angle)
         return odom
 
 
