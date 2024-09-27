@@ -1,9 +1,4 @@
-import traitlets
 import cv2
-
-
-class Image(traitlets.HasTraits):
-    value = traitlets.Any()
 
 
 class ImageUtils:

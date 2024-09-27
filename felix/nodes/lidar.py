@@ -1,17 +1,13 @@
-import traitlets
-import cv2
-from cv2 import VideoCapture
-from felix.settings import settings
 from lib.node.base import Node
-from felix.vision.image import ImageUtils
 from rplidar import RPLidar
 import numpy as np
 
 class Lidar(Node):
-    value = traitlets.Any()
-    scanning = traitlets.Bool(default_value = False)
+
     def __init__(self, **kwargs):
         super(Lidar, self).__init__(**kwargs)
+        self.scanning = False
+        self.value = np.zeros(360)
 
         self.lidar = RPLidar('/dev/rplidar')
         self.lidar.reset()

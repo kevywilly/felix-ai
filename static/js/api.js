@@ -100,7 +100,7 @@ const handleNavImageClick = (event) => {
     cmd = { x, y, w, h };
 
     if (captureMode || driveMode) {
-        request = { cmd, captureMode: captureMode, driveMode: driveMode };
+        request = { x,y,w,h };
         post("api/navigate", request, (data) => {
             console.log(data);
         });

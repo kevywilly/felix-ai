@@ -5,14 +5,11 @@ from torchvision.models.alexnet import alexnet
 import tensorrt as trt
 from felix.settings import settings
 import os
-import logging
+from lib.log import logger
 
 TRT_LOGGER = trt.Logger()
 
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
-
-logging.basicConfig(level = logging.INFO)
-logger = logging.getLogger(__name__)
 
 class TRTUtils:
    

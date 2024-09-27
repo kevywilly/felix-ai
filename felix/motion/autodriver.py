@@ -11,10 +11,11 @@ from felix.vision.image import ImageUtils
 import logging
 import os
 torch.hub.set_dir(settings.TRAINING.model_root)
+from lib.log import logger
 
 class AutoDriver(ABC):
 
-    logger = logging.getLogger('AUTODRIVE')
+    logger = logger
 
     def __init__(self, model_file):
         self.device = torch.device('cuda' if torch.has_cuda else 'cpu')

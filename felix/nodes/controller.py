@@ -1,6 +1,5 @@
 
 from typing import Optional
-import traitlets
 from felix.settings import settings
 from lib.interfaces import Odometry, Twist, Vector3
 from lib.nodes.base import BaseNode
@@ -12,24 +11,15 @@ else:
 
 import numpy as np
 import time
-
+from felix.signals import cmd_vel_signal, nav_target_signal, raw_image_signal, autodrive_signal
 
 class Controller(BaseNode):
 
-    autodrive = traitlets.Bool(default_value=False)
-    cmd_vel = traitlets.Instance(Twist, allow_none=True)
-    nav_target = traitlets.Instance(Odometry, allow_none=True)
-    publish_frequency_hz = traitlets.Int(default_value=10, config=True)
-    camera_image = traitlets.Any(allow_none=True)
-
-    attitude_data = traitlets.Any()
-    magnometer_data = traitlets.Any()
-    gyroscope_data = traitlets.Any()
-    accelerometer_data = traitlets.Any()
-    motion_data = traitlets.Any()
-
-    def __init__(self, *args, **kwargs):
-        super(Controller, self).__init__(*args, **kwargs)
+    def __init__(self, publish_frequency_hz=10, **kwargs):
+        super(Controller, self).__init__(**kwargs)
+        self.publish_frequency_hz = publish_frequency_hz
+        self.camera_image = None
+        self.cmd_vel = Twist()
         self.vehicle = settings.VEHICLE
         self._bot = Rosmaster(car_type=2, com=self.vehicle.yaboom_port)
         self._bot.create_receive_threading()
@@ -47,12 +37,17 @@ class Controller(BaseNode):
         self.last_cmd = None
 
         self.print_stats()
+        self.autodrive = False
 
         self.autodriver = None #TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
 
-        self.loaded()
+        cmd_vel_signal.connect(self._apply_cmd_vel)
+        nav_target_signal.connect(self._apply_nav_target)
+        raw_image_signal.connect(self._update_camera_image)
+        autodrive_signal.connect(self._autodrive_changed)
 
-        
+        self.loaded()
+    
     def print_stats(self):
         s = f"""
             min_linear_velocity: {self.vehicle.min_linear_velocity}
@@ -69,7 +64,7 @@ class Controller(BaseNode):
         self.accelerometer_data = Vector3.from_tuple(self._bot.get_accelerometer_data())
         self.motion_data = Vector3.from_tuple(self._bot.get_motion_data())
 
-    def spinner(self):
+    async def spinner(self):
         self.get_imu_data()
         if self.motion_data.x != 0 or self.motion_data.y != 0:
             pass
@@ -87,7 +82,17 @@ class Controller(BaseNode):
     def stop(self):
         self._bot.set_motor(0,0,0,0)
 
-     
+
+    def _autodrive_changed(self, sender, payload):
+        self.autodrive = payload
+        if self.autodrive:
+            self._start_nav()
+        else:
+            self._reset_nav()
+
+    def _update_camera_image(self, sender, payload):
+        self.camera_image = payload
+
     def _scale_cmd_vel(self, cmd: Twist):
         
         return(
@@ -96,9 +101,9 @@ class Controller(BaseNode):
             self.vehicle.max_angular_velocity if cmd.angular.z > self.vehicle.max_angular_velocity else cmd.angular.z,
         )
     
-    def _apply_cmd_vel(self, cmd: Twist):
+    def _apply_cmd_vel(self, sender, payload: Twist):
     
-        vx, vy, omega = self._scale_cmd_vel(cmd)
+        vx, vy, omega = self._scale_cmd_vel(payload)
         
     
         vel = self.vehicle.forward_kinematics(
@@ -109,11 +114,11 @@ class Controller(BaseNode):
        
         self._bot.set_motor(pow[0], pow[2], pow[1], pow[3])
         
-        self.logger.info(f"cmd: [{cmd.linear.x},{cmd.linear.y},{cmd.angular.z}]")
+        self.logger.info(f"cmd: [{payload.linear.x},{payload.linear.y},{payload.angular.z}]")
         self.logger.info(f"scaled: [{vx},{vy},{omega}]")
         self.logger.info(f"power: {pow}")
 
-        self.last_cmd = cmd
+        self.last_cmd = payload
        
 
     def _reset_nav(self):
@@ -130,39 +135,10 @@ class Controller(BaseNode):
         self.nav_yaw = self._bot.get_imu_attitude_data()[2]
         self.nav_start_time = time.time()
 
+    def _apply_nav_target(self, sender, payload: Odometry):
+        self._apply_cmd_vel(sender, payload.twist)
 
-    def _apply_nav_target(self):
-        if self.nav_target:
-            self._apply_cmd_vel(
-                self.nav_target.twist
-            )
-            self._start_nav()
-        else:
-            self.stop()
-
-
-    def shutdown(self):
+    async def shutdown(self):
         self.stop()
         self.autodrive = False
         
-
-    @traitlets.observe('autodrive')
-    def _autodrive_chnged(self, change):
-        print(f'autodrive changed to: {self.autodrive}')
-        self.stop()
-        pass
-
-    #@traitlets.observe('camera_image')
-    #def _camera_image_changed(self, change):
-    #    self.logger.info("got image")
-
-        
-        
-    @traitlets.observe('cmd_vel')
-    def _cmd_val_change(self, change):
-        self._apply_cmd_vel(change.new)
-
-    @traitlets.observe('nav_target')
-    def _nav_target_change(self, change):
-        if change.new:
-            self._apply_nav_target()

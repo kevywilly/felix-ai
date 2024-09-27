@@ -42,11 +42,9 @@ class Kinematics:
         max_z = 0.2
 
         turn_factor = (degrees/(fov/2.0))
-
-        print(turn_factor)
         
-        _vx = float((1-abs(turn_factor)))*.8
-        _vz = float(turn_factor*-1)*1.6
+        _vx = float((1-abs(turn_factor)))*.5
+        _vz = float(turn_factor*-1)*1.0
 
         angle = float(math.radians(_x*fov))
 

@@ -1,9 +1,8 @@
 from functools import cached_property
-import traitlets
 import cv2
 from felix.settings import settings
 from lib.nodes import BaseNode
-from felix.vision.image import ImageUtils
+from felix.signals import raw_image_signal
 
 class VideoCapture:
     def __init__(self, *args):
@@ -27,15 +26,13 @@ class VideoCapture:
 
 class Camera(BaseNode):
 
-    value = traitlets.Any()
-    sensor_id = traitlets.Int(default_value=0)
-
-    def __init__(self, **kwargs):
+    def __init__(self, sensor_id=0, **kwargs):
         super(Camera, self).__init__(**kwargs)
+        self.sensor_id = sensor_id
         self.sensor_mode = settings.DEFAULT_SENSOR_MODE
         self.frequency = self.sensor_mode.framerate
         self.cap = self._init_camera()
-
+        self.image = None
         self.loaded()
 
     def _init_camera(self) -> VideoCapture:
@@ -44,7 +41,8 @@ class Camera(BaseNode):
         if not ret:
             raise Exception("Could not initialize camera")
         else:
-            self.value = frame
+            self.image = frame
+            raw_image_signal.send(self, payload=frame)
             return cap
 
     def _convert_color(self, frame):
@@ -67,13 +65,14 @@ class Camera(BaseNode):
         else:
             frame = self._convert_color(frame)
             frame = self._undistort(frame)
-            self.value = frame
+            self.image = frame
+            raw_image_signal.send(self, payload=frame)
             
-    def spinner(self):
+    async def spinner(self):
         self._read(self.cap)
 
 
-    def shutdown(self):
+    async def shutdown(self):
         try:
             cv2.destroyAllWindows()
         except:  # noqa: E722

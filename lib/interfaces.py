@@ -1,13 +1,13 @@
 from abc import abstractmethod, ABC
-from typing import Optional
+from typing import Dict, Optional
 import numpy as np
 from numpy import ndarray
 import time
 
 
 class DataModel(ABC):
-    @abstractmethod
-    def numpy() -> ndarray:
+    @property
+    def numpy(self) -> ndarray:
         return np.array()
 
 
@@ -17,6 +17,7 @@ class Vector3(DataModel):
         self.y = y
         self.z = z
 
+    @property
     def dict(self):
         return {"x": self.x, "y": self.y, "z": self.z}
 
@@ -33,9 +34,11 @@ class Vector3(DataModel):
         x, y, z = input
         return Vector3(x, y, z)
 
+    @property
     def numpy(self):
         return np.array([self.x, self.y, self.z])
 
+    @property
     def csv(self):
         return f"{self.x},{self.y},{self.z}"
 
@@ -64,15 +67,18 @@ class Vector4(DataModel):
         x, y, z, w = input
         return Vector4(x, y, z, w)
 
+    @property
     def numpy(self):
         return np.array([self.x, self.y, self.z, self.w])
 
+    @property
     def csv(self):
         return f"{self.x},{self.y},{self.z},{self.z}"
 
     def __repr__(self):
         return f"[{self.x:.3f},{self.y:.3f},{self.z:.3f},{self.w:.3f}]"
 
+    @property
     def dict(self):
         return {"x": self.x, "y": self.y, "z": self.z, "w": self.w}
 
@@ -86,9 +92,11 @@ class Time(DataModel):
         self.sec = sec
         self.nanosec = nanosec
 
+    @property
     def numpy(self):
         return np.array([self.sec, self.nanosec])
 
+    @property
     def dict(self):
         return {"sec": self.sec, "nanosec": self.nanosec}
 
@@ -98,8 +106,9 @@ class Header:
         self.stamp = stamp
         self.frame_id = frame_id
 
+    @property
     def dict(self):
-        return {"stamp": self.stamp, "frame_id": self.frame_id}
+        return {"stamp": self.stamp.dict, "frame_id": self.frame_id}
 
 
 class Point(Vector3):
@@ -115,15 +124,27 @@ class Twist(DataModel):
         self.linear = linear
         self.angular = angular
 
+    @property
     def numpy(self):
         return np.concatenate((self.linear.numpy, self.angular.numpy))
 
+    @property
     def csv(self):
         return ",".join([self.linear.csv(), self.angular().csv()])
 
+    @property
     def dict(self):
-        return {"linear": self.linear.dict(), "angular": self.angular.dict()}
+        return {"linear": self.linear.dict, "angular": self.angular.dict}
+    
+    @classmethod
+    def model_validate(cls, value: Dict):
+        t = Twist()
+        t.linear.x = float(value["linear"]["x"])
+        t.linear.y = float(value["linear"]["y"])
+        t.angular.z = float(value["angular"]["z"])
+        return t
 
+    @property
     def is_zero(self):
         return self.linear.x == 0 and self.linear.y == 0 and self.angular.z == 0
 
@@ -140,16 +161,19 @@ class Pose(DataModel):
         self.position = position
         self.orientation = orientation
 
+    @property
     def csv(self):
         return ",".join([self.position.csv(), self.orientation().csv()])
 
+    @property
     def numpy(self):
         return np.concatenate((self.position.numpy, self.orientation.numpy))
 
+    @property
     def dict(self):
         return {
-            "position": self.position.dict(),
-            "orientation": self.orientation.dict(),
+            "position": self.position.dict,
+            "orientation": self.orientation.dict,
         }
 
 
@@ -166,13 +190,15 @@ class Odometry(DataModel):
         self.twist = twist
         self.pose = pose
 
+    @property
     def numpy(self):
-        return np.concatenate(self.twist.numpy(), self.pose.numpy())
+        return np.concatenate(self.twist.numpy, self.pose.numpy)
 
+    @property
     def dict(self):
         return {
-            "header": self.header.dict(),
+            "header": self.header.dict,
             "child_frame_id": self.child_frame_id,
-            "twist": self.twist.dict(),
-            "pose": self.pose.dict(),
+            "twist": self.twist.dict,
+            "pose": self.pose.dict,
         }

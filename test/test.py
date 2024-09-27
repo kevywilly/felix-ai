@@ -1,5 +1,6 @@
 from rplidar import RPLidar
 import numpy as np
+from lib.log import logger
 
 lidar = RPLidar('/dev/rplidar')
 
@@ -8,8 +9,7 @@ print(info)
 
 health = lidar.get_health()
 print(health)
-import logging
-logger = logging.getLogger(__name__)
+
 for i, scan in enumerate(lidar.iter_scans()):
 
     print('%d: Got %d measurments' % (i, len(scan)))

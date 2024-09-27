@@ -1,5 +1,4 @@
 pydantic
-traitlets
 flask
 flask_cors
 torch
@@ -9,3 +8,4 @@ pyaml
 numpy
 Pillow
 pyserial
+asyncio-atexit

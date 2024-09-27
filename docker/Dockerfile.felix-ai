@@ -18,8 +18,8 @@ RUN pip3 install --no-cache-dir --verbose \
   flask \
   flask_cors \
   pandas \
-  traitlets \
-  rplidar-roboticia
+  pyserial \
+  asyncio-atexit
 
 FROM stage1 as stage2
 
