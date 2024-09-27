@@ -168,6 +168,7 @@ class Robot(BaseNode):
 
         t = Joystick.get_twist(_x, _y, strafe)
         self.set_cmd_vel(t)
+        print(x,y,t)
         return t
 
     def handle_navigate(self, data: Dict) -> str:
