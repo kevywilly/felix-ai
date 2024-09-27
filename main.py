@@ -6,11 +6,11 @@ import os
 from blinker import NamedSignal
 from flask_cors import CORS
 from flask import Flask, Response, request, render_template
-from felix.motion.joystick import Joystick
+from felix.motion.joystick import Joystick, JoystickRequest
 from felix.nodes import Robot
 from felix.nodes.camera import Camera
 from felix.mock.camera import Camera as MockCamera
-from felix.nodes.controller import Controller
+from felix.nodes.controller import Controller, ControllerNavRequest
 from felix.signals import joystick_signal, nav_target_signal, cmd_vel_signal, autodrive_signal
 from lib.interfaces import Twist
 from lib.kinematics import Kinematics
@@ -69,22 +69,20 @@ def api_set_autodrive():
 
 @app.post("/api/navigate")
 def api_navigate():
+
     data = request.get_json()
-    x = int(data.get("x"))
-    y = int(data.get("y"))
-    w = int(data.get("w"))
-    h = int(data.get("h"))
+    nav_request = ControllerNavRequest.model_validate(data)
+    _send(nav_target_signal, nav_request)
 
-    odom = Kinematics.xywh_to_nav_target(x, y, w, h)
-
-    _send(nav_target_signal, odom)
-    d = odom.dict
-    return d
+    return data
 
 
 @app.post("/api/joystick")
 def api_joystick():
-    return _send(joystick_signal, request.get_json())
+    data = request.get_json()
+    print(data)
+    _send(joystick_signal, JoystickRequest.model_validate(data))
+    return data
 
 @app.post("/api/snapshots/<folder>/<label>")
 def create_snapshot(folder: str, label: str):

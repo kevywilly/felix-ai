@@ -1,4 +1,4 @@
-from felix.settings import settings
+
 from lib.interfaces import Odometry
 
 from typing import Tuple

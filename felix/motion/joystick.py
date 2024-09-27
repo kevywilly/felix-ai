@@ -6,7 +6,19 @@ from felix.signals import cmd_vel_signal, joystick_signal
 from lib.log import logger
 import math
 
+class JoystickRequest:
+    def __init__(self, x: any, y: any, strafe: any):
+        self.x = float(x)
+        self.y = float(y)
+        self.strafe = bool(strafe)
 
+    @classmethod
+    def model_validate(cls, data):
+        return JoystickRequest(**data)
+    
+    def __repr__(self):
+        return f"JoystickRequest(x={self.x}, y={self.y}, strafe={self.strafe})"
+    
 class JoystickNonLinearDampener:
     def __init__(self, curve_factor=0.5):
         """
@@ -54,24 +66,19 @@ class Joystick:
 
     def get_twist(self, joy_x, joy_y, strafe: bool = False) -> Twist:
         t = Twist()
-        if strafe:
-            vel = np.array([joy_y, -joy_x, 0])
-        else:
-            vel = np.array([joy_y, 0, -joy_x])
 
-        vel = np.array(vel)  # x left right, y is forwrad backward for joystick
+        _joy_x, _joy_y = self.dampener.apply(joy_x, joy_y)
+
+        if strafe:
+            vel = np.array([_joy_y, -_joy_x, 0])
+        else:
+            vel = np.array([_joy_y, 0, -_joy_x])
+ # x left right, y is forwrad backward for joystick
         t.linear.x, t.linear.y, t.angular.z = np.vectorize(dampen)(vel)*settings.VEHICLE.velocity_scaler
         #t.linear.x, t.linear.y, t.angular.z = (vel)*settings.VEHICLE.velocity_scaler
 
-        return t
+        return t 
 
-    def handle_joystick(self, sender, payload: Dict) -> Twist:
+    def handle_joystick(self, sender, payload: JoystickRequest):
         logger.info(f"Joystick signal received from {sender}: {payload}")
-        x = float(payload.get("x", 0))
-        y = float(payload.get("y", 0))
-        strafe = float(payload.get("strafe", False))
-        _x, _y = self.dampener.apply(x, y)
-
-        t = Joystick.get_twist(_x, _y, strafe)
-        cmd_vel_signal.send("robot", payload=t)
-        return t
+        cmd_vel_signal.send("robot", payload=self.get_twist(payload.x, payload.y, payload.strafe))

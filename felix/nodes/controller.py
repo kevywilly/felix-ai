@@ -2,6 +2,7 @@
 from typing import Optional
 from felix.settings import settings
 from lib.interfaces import Odometry, Twist, Vector3
+from lib.kinematics import Kinematics
 from lib.nodes.base import BaseNode
 
 if settings.ROBOT == 'felixMac':
@@ -12,6 +13,21 @@ else:
 import numpy as np
 import time
 from felix.signals import cmd_vel_signal, nav_target_signal, raw_image_signal, autodrive_signal
+
+class ControllerNavRequest:
+    def __init__(self, x: any, y: any, w: any, h: any):
+        self.x = float(x)
+        self.y = float(y)
+        self.w = float(h)
+        self.h = float(h)
+
+    @classmethod
+    def model_validate(cls, data):
+        return ControllerNavRequest(**data)
+    
+    def __repr__(self):
+        return f"ControllerNavRequest(x={self.x}, y={self.y}, w={self.w}, h={self.h})"
+
 
 class Controller(BaseNode):
 
@@ -42,7 +58,7 @@ class Controller(BaseNode):
         self.autodriver = None #TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
 
         cmd_vel_signal.connect(self._apply_cmd_vel)
-        nav_target_signal.connect(self._apply_nav_target)
+        nav_target_signal.connect(self._apply_nav_request)
         raw_image_signal.connect(self._update_camera_image)
         autodrive_signal.connect(self._autodrive_changed)
 
@@ -101,6 +117,10 @@ class Controller(BaseNode):
             self.vehicle.max_angular_velocity if cmd.angular.z > self.vehicle.max_angular_velocity else cmd.angular.z,
         )
     
+    def _apply_nav_request(self, sender, payload: ControllerNavRequest):
+        odom = Kinematics.xywh_to_nav_target(payload.x, payload.y, payload.w, payload.h)
+        self._apply_cmd_vel(sender, odom.twist)
+
     def _apply_cmd_vel(self, sender, payload: Twist):
     
         vx, vy, omega = self._scale_cmd_vel(payload)
@@ -134,9 +154,6 @@ class Controller(BaseNode):
         self.nav_delta_target = 0
         self.nav_yaw = self._bot.get_imu_attitude_data()[2]
         self.nav_start_time = time.time()
-
-    def _apply_nav_target(self, sender, payload: Odometry):
-        self._apply_cmd_vel(sender, payload.twist)
 
     async def shutdown(self):
         self.stop()
