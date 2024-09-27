@@ -59,8 +59,8 @@ def dampen(x):
         return math.floor(100 * y) / 100.0
 
 class Joystick:
-    def __init__(self, dampen_ratio=0.25):
-        self.dampener = JoystickNonLinearDampener(dampen_ratio)
+    def __init__(self, curve_factor=0.25):
+        self.dampener = JoystickNonLinearDampener(curve_factor)
         joystick_signal.connect(self.handle_joystick)
         logger.info("Joystick initialized")
 

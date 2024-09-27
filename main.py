@@ -13,6 +13,7 @@ from felix.mock.camera import Camera as MockCamera
 from felix.nodes.controller import Controller, ControllerNavRequest
 from felix.signals import joystick_signal, nav_target_signal, cmd_vel_signal, autodrive_signal
 from lib.interfaces import Twist
+from felix.settings import settings
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
@@ -121,7 +122,8 @@ async def main():
         app.camera = MockCamera()
 
     app.controller = Controller(frequency=30)
-    app.joystick = Joystick(dampen_ratio=0.75)
+    
+    app.joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
 
     asyncio.create_task(app.robot.spin(frequency=0.5))
     asyncio.create_task(app.camera.spin())

@@ -9,7 +9,10 @@ vehicle:
   motor_voltage: 5
 peripherals:
   yaboom: /dev/myserial
-  joy_dampening_mode: 1
+  joystick:
+    dampening:
+      mode: 1
+      curve_factor: 0.5
 autodrive:
   linear: 0.5
   angular: 1.4

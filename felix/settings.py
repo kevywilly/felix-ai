@@ -45,7 +45,12 @@ class AppSettings:
     
         config = self.load_config(config_file)
 
-        self.JOY_DAMPENING_MODE = config.get('peripherals').get('joy_dampening_mode')
+        peripherals = config.get('peripherals',{})
+        joystick = peripherals.get('joystick',{})
+        dampening = joystick.get('dampening',{})
+        
+        self.JOY_DAMPENING_MODE: int = dampening.get('mode',1)
+        self.JOY_DAMPENING_CURVE_FACTOR: float = dampening.get('curve_factor',0.5)
         
         self.TRAINING = TrainingConfig(config)
 
