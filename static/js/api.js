@@ -67,6 +67,7 @@ const stop = () => {
 }
 
 const handleJoystick = (stickData) => {
+    console.log(stickData);
     joyData = { x: parseFloat(stickData.x) / 100.0, y: parseFloat(stickData.y) / 100.0, strafe: strafe }
     applyJoyData();
 }
