@@ -2,9 +2,9 @@ import os
 import numpy as np
 from pathlib import Path
 from typing import List, Dict
-from src.motion.vehicle import MecanumVehicle, DifferentialDriveVehicle
-from src.utils.format import comment_block
-from src.vision.sensors import CameraSensor
+from lib.vehicles.vehicle import MecanumVehicle, DifferentialDriveVehicle
+from felix.utils.format import comment_block
+from felix.vision.sensors import CameraSensor
 
 import yaml
 
@@ -89,5 +89,5 @@ class AppSettings:
 
 
 path = Path(__file__).parent.absolute()
-settings = AppSettings(os.path.join(path,"config",f'{_ROBOT}.yml'))
+settings = AppSettings(os.path.join(path,"..","config",f'{_ROBOT}.yml'))
 

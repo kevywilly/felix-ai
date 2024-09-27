@@ -1,20 +1,20 @@
 
 from typing import Optional
 import traitlets
-from src.nodes.node import Node
-from src.interfaces.msg import Odometry, Twist, Vector3
-from settings import settings
+from felix.settings import settings
+from lib.interfaces import Odometry, Twist, Vector3
+from lib.nodes.base import BaseNode
 
 if settings.ROBOT == 'felixMac':
-    from src.mock.rosmaster import MockRosmaster as Rosmaster
+    from lib.mock.rosmaster import MockRosmaster as Rosmaster
 else:
-    from src.motion.rosmaster import Rosmaster
+    from lib.controllers.rosmaster import Rosmaster
 
 import numpy as np
 import time
 
 
-class Controller(Node):
+class Controller(BaseNode):
 
     autodrive = traitlets.Bool(default_value=False)
     cmd_vel = traitlets.Instance(Twist, allow_none=True)

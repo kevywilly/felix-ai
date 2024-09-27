@@ -3,7 +3,7 @@
 import torch
 from torchvision.models.alexnet import alexnet
 import tensorrt as trt
-from settings import settings
+from felix.settings import settings
 import os
 import logging
 

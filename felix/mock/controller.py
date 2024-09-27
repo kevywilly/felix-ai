@@ -1,10 +1,10 @@
 from typing import Optional
 import traitlets
-from src.nodes.node import Node
-from src.interfaces.msg import Odometry, Twist, Vector3
+from lib.node.base import Node
+from felix.interfaces.msg import Odometry, Twist, Vector3
 import numpy as np
 import time
-from settings import settings
+from felix.settings import settings
 
 
 class MockRosmaster:

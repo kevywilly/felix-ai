@@ -3,7 +3,7 @@ import time
 import json
 from pathlib import Path
 import cv2
-from settings import settings
+from felix.settings import settings
 from uuid import uuid4
 from typing import Optional, Dict
 from glob import glob

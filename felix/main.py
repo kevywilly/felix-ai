@@ -4,8 +4,8 @@ import logging
 import os
 from flask_cors import CORS
 from flask import Flask, Response, request, jsonify, render_template
-from src.nodes.robot import Robot
-from settings import settings
+from felix.nodes import Robot
+from felix.settings import settings
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 

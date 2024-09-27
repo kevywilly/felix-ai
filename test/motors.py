@@ -1,5 +1,5 @@
 import time
-from src.motion.rosmaster import Rosmaster
+from lib.controllers.rosmaster import Rosmaster
 bot = Rosmaster(car_type=2, com="/dev/myserial")
 bot.create_receive_threading()
 bot.get_imu_attitude_data()

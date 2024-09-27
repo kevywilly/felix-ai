@@ -54,11 +54,11 @@
     }
 
     .input {
-        @apply  w-[50px] border px-2 py-1 rounded-md w-full
+        @apply border px-2 py-1 rounded-md w-full
     }
 
     .input-center {
-        @apply  w-[50px] border rounded-md w-full text-center
+        @apply border rounded-md w-full text-center
     }
 
     .data-grid-4 {

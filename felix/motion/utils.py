@@ -1,4 +1,4 @@
-from src.interfaces.msg import Twist
+from felix.interfaces.msg import Twist
 from typing import Optional, Dict
 
 def twist_to_json(t: Twist) -> Dict:

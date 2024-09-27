@@ -1,9 +1,9 @@
 import traitlets
 import cv2
 from cv2 import VideoCapture
-from settings import settings
-from src.nodes.node import Node
-from src.vision.image import ImageUtils
+from felix.settings import settings
+from lib.node.base import Node
+from felix.vision.image import ImageUtils
 from rplidar import RPLidar
 import numpy as np
 

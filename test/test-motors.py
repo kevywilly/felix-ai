@@ -1,4 +1,4 @@
-from src.motion.rosmaster import Rosmaster
+from lib.controllers.rosmaster import Rosmaster
 import time
 
 bot = Rosmaster(car_type=2, com="/dev/myserial")

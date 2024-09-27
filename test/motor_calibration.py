@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import atexit
-from src.motion.rosmaster import Rosmaster
+from lib.controllers.rosmaster import Rosmaster
 import numpy as np
 import pandas as pd
 import time

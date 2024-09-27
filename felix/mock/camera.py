@@ -1,11 +1,31 @@
+from functools import cached_property
 import traitlets
 import cv2
-from cv2 import VideoCapture
-from settings import settings
-from src.nodes.node import Node
-from src.vision.image import ImageUtils
+from felix.settings import settings
+from lib.nodes import BaseNode
+from felix.vision.image import ImageUtils
 
-class Camera(Node):
+class VideoCapture:
+    def __init__(self, *args):
+        pass
+    
+    @cached_property
+    def frame(self):
+        return cv2.imread("felix/mock/camera_image.jpg")
+    
+    def read(self):
+        return True, self.frame
+    
+    def release(self):
+        return
+    
+    def isOpened(self):
+        return True
+
+    def __del__(self):
+        pass
+
+class Camera(BaseNode):
 
     value = traitlets.Any()
     sensor_id = traitlets.Int(default_value=0)
@@ -28,7 +48,7 @@ class Camera(Node):
             return cap
 
     def _convert_color(self, frame):
-        return cv2.cvtColor(frame, cv2.COLOR_YUV2BGR_I420)
+        return frame #cv2.cvtColor(frame, cv2.COLOR_YUV2BGR_I420)
     
 
     def _undistort(self, frame):
@@ -48,16 +68,6 @@ class Camera(Node):
             frame = self._convert_color(frame)
             frame = self._undistort(frame)
             self.value = frame
-            """
-            try:
-                cv2.namedWindow("felix", cv2.WINDOW_NORMAL)
-                i2 = cv2.resize(frame, (300,300), cv2.INTER_LINEAR)
-                cv2.imshow("felix", i2)
-                cv2.waitKey(0)
-            except Exception as ex:
-                raise ex
-                pass
-            """
             
     def spinner(self):
         self._read(self.cap)
@@ -68,11 +78,8 @@ class Camera(Node):
             cv2.destroyAllWindows()
         except:  # noqa: E722
             pass
-
-        try:
+        if self.cap:
             self.cap.release()
-        except: # noqa: E722
-            pass
 
         
 

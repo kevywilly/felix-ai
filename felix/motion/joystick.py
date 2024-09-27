@@ -1,8 +1,8 @@
 import math
 import logging
 from typing import Optional
-from src.interfaces.msg import Twist
-from settings import settings
+from lib.interfaces import Twist
+from felix.settings import settings
 import numpy as np
 
 logger = logging.getLogger('FELIX')

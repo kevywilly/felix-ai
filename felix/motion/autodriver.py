@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from src.interfaces.msg import Twist
+from felix.interfaces.msg import Twist
 import torch
 import torchvision
 import cv2
 import numpy as np
 import torch.nn.functional as F
 import time
-from settings import settings
-from src.vision.image import ImageUtils
+from felix.settings import settings
+from felix.vision.image import ImageUtils
 import logging
 import os
 torch.hub.set_dir(settings.TRAINING.model_root)
