@@ -70,7 +70,7 @@ class Joystick:
         x = float(payload.get("x", 0))
         y = float(payload.get("y", 0))
         strafe = float(payload.get("strafe", False))
-        _x, _y = x,y #self.dampener.apply(x, y)
+        _x, _y = self.dampener.apply(x, y)
 
         t = Joystick.get_twist(_x, _y, strafe)
         cmd_vel_signal.send("robot", payload=t)
