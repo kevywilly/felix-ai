@@ -2,7 +2,7 @@ import os
 import numpy as np
 from pathlib import Path
 from typing import List, Dict
-from lib.vehicles.vehicle import MecanumVehicle, DifferentialDriveVehicle
+from lib.vehicles import MecanumVehicle, DifferentialDriveVehicle
 from felix.utils.format import comment_block
 from felix.vision.sensors import CameraSensor
 
@@ -54,7 +54,7 @@ class AppSettings:
         
         self.TRAINING = TrainingConfig(config)
 
-        self.VEHICLE = DifferentialDriveVehicle(
+        self.VEHICLE = MecanumVehicle(
             min_rpm = config.get('vehicle').get('min_rpm',0),
             max_rpm = config.get('vehicle').get('max_rpm',205),
             wheel_radius = config.get('vehicle').get('wheel_radius'),
@@ -63,9 +63,11 @@ class AppSettings:
             gear_ratio = config.get('vehicle').get('gear_ratio',0),
             motor_voltage = config.get('vehicle').get('motor_voltage',0),
             yaboom_port=config.get('peripherals').get('yaboom')
-        )
+        )   
         
-        self.DEFAULT_SENSOR_MODE = CameraSensor.mode(config.get('camera_sensor_mode',3))
+        camera = config.get('camera',{})
+        self.DEFAULT_SENSOR_MODE = CameraSensor.mode(camera.get('sensor_mode',3))
+        self.CAMERA_FOV = camera.get('fov',160)
         
         self.DISTORTION_COEFFICIENTS = np.array(
             config.get('camera_calibration')

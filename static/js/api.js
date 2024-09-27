@@ -92,7 +92,7 @@ const joy1 = new JoyStick('joy1', {
 
 
 const displayCoordinates = (x,y,w,h) => {
-    $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${x} h:${y}`);
+    $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${w} h:${h}`);
 }
 
 const handleNavImageClick = (event) => {

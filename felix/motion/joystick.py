@@ -2,7 +2,7 @@ from typing import Dict
 from lib.interfaces import Twist
 from felix.settings import settings
 import numpy as np
-from felix.signals import cmd_vel_signal, joystick_signal
+from felix.signals import sig_cmd_vel, sig_joystick
 from lib.log import logger
 import math
 
@@ -61,7 +61,7 @@ def dampen(x):
 class Joystick:
     def __init__(self, curve_factor=0.25):
         self.dampener = JoystickNonLinearDampener(curve_factor)
-        joystick_signal.connect(self.handle_joystick)
+        sig_joystick.connect(self.handle_joystick)
         logger.info("Joystick initialized")
 
     def get_twist(self, joy_x, joy_y, strafe: bool = False) -> Twist:
@@ -74,11 +74,13 @@ class Joystick:
         else:
             vel = np.array([_joy_y, 0, -_joy_x])
  # x left right, y is forwrad backward for joystick
-        t.linear.x, t.linear.y, t.angular.z = np.vectorize(dampen)(vel)*settings.VEHICLE.velocity_scaler
+        scaler = settings.VEHICLE.velocity_scaler
+
+        t.linear.x, t.linear.y, t.angular.z = np.vectorize(dampen)(vel)*scaler
         #t.linear.x, t.linear.y, t.angular.z = (vel)*settings.VEHICLE.velocity_scaler
 
         return t 
 
     def handle_joystick(self, sender, payload: JoystickRequest):
         logger.info(f"Joystick signal received from {sender}: {payload}")
-        cmd_vel_signal.send("robot", payload=self.get_twist(payload.x, payload.y, payload.strafe))
+        sig_cmd_vel.send("robot", payload=self.get_twist(payload.x, payload.y, payload.strafe))

@@ -12,11 +12,14 @@ class DataModel(ABC):
 
 
 class Vector3(DataModel):
-    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
-        self.x = x
-        self.y = y
-        self.z = z
+    def __init__(self, x: any = 0.0, y: any = 0.0, z: any = 0.0):
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
 
+    def copy(self):
+        return Vector3(self.x, self.y, self.z)
+    
     @property
     def dict(self):
         return {"x": self.x, "y": self.y, "z": self.z}
@@ -109,6 +112,9 @@ class Header:
     @property
     def dict(self):
         return {"stamp": self.stamp.dict, "frame_id": self.frame_id}
+    
+    def __repr__(self):
+        return f"Header(stamp={self.stamp}, frame_id={self.frame_id})"
 
 
 class Point(Vector3):
@@ -124,6 +130,9 @@ class Twist(DataModel):
         self.linear = linear
         self.angular = angular
 
+    def copy(self):
+        return Twist(linear=self.linear.copy(), angular=self.angular.copy())
+    
     @property
     def numpy(self):
         return np.concatenate((self.linear.numpy, self.angular.numpy))
@@ -175,6 +184,9 @@ class Pose(DataModel):
             "position": self.position.dict,
             "orientation": self.orientation.dict,
         }
+    
+    def __repr__(self):
+        return f"Pose(position={self.position}, orientation={self.orientation})"
 
 
 class Odometry(DataModel):
@@ -202,3 +214,6 @@ class Odometry(DataModel):
             "twist": self.twist.dict,
             "pose": self.pose.dict,
         }
+    
+    def __repr__(self) -> str:
+        return f"Odometry(header={self.header}, child_frame_id={self.child_frame_id}, twist={self.twist}, pose={self.pose})"

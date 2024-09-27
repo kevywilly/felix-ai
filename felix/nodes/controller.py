@@ -1,8 +1,8 @@
 
+import math
 from typing import Optional
 from felix.settings import settings
 from lib.interfaces import Odometry, Twist, Vector3
-from lib.kinematics import Kinematics
 from lib.nodes.base import BaseNode
 
 if settings.ROBOT == 'felixMac':
@@ -12,22 +12,46 @@ else:
 
 import numpy as np
 import time
-from felix.signals import cmd_vel_signal, nav_target_signal, raw_image_signal, autodrive_signal
+from felix.signals import sig_cmd_vel, sig_nav_target, sig_raw_image, sig_stop
 
 class ControllerNavRequest:
     def __init__(self, x: any, y: any, w: any, h: any):
+        # x = horizontal coordinate
+        # y = vertical coordinate
+        # w = width of canvas
+        # h = height of canvas
+
         self.x = float(x)
         self.y = float(y)
-        self.w = float(h)
+        self.w = float(w)
         self.h = float(h)
+
+        # relative x and y as percentage of width and height
+        self.x_rel = (self.x - self.w/2)/(self.w/2)
+        self.y_rel = (self.h - self.y)/self.h
+
+    def __repr__(self):
+        return f"ControllerNavRequest(x={self.x}, y={self.y}, w={self.w}, h={self.h}, x_rel={self.x_rel}, y_rel={self.y_rel})"  
+
+    @property
+    def target(self) -> Odometry:
+        degrees = self.x_rel*settings.CAMERA_FOV/2.0
+        radians = math.radians(degrees)
+        #angle = float(math.radians(self.x_rel*settings.CAMERA.fov))
+
+        odom = Odometry()
+        # we need to flip x and y is vertical, x is horizontal
+        odom.twist.linear.x = self.y_rel
+        odom.twist.angular.z =-self.x_rel
+        odom.pose.orientation.z = radians
+
+        return odom
 
     @classmethod
     def model_validate(cls, data):
         return ControllerNavRequest(**data)
     
-    def __repr__(self):
-        return f"ControllerNavRequest(x={self.x}, y={self.y}, w={self.w}, h={self.h})"
-
+    
 
 class Controller(BaseNode):
 
@@ -59,10 +83,7 @@ class Controller(BaseNode):
 
         self.autodriver = None #TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
 
-        cmd_vel_signal.connect(self._apply_cmd_vel)
-        nav_target_signal.connect(self._apply_nav_request)
-        raw_image_signal.connect(self._update_camera_image)
-        autodrive_signal.connect(self._autodrive_changed)
+        self._connect_signals()
 
         self.loaded()
     
@@ -75,6 +96,24 @@ class Controller(BaseNode):
         """
         self.logger.info(s)
 
+    def _connect_signals(self):
+        sig_stop.connect(self._on_stop_signal)
+        sig_cmd_vel.connect(self._on_cmd_vel_signal)
+        sig_nav_target.connect(self._on_nav_signal)
+        sig_raw_image.connect(self._on_raw_image_signal)
+
+    def _on_stop_signal(self, sender, **kwargs):
+        self.stop()
+
+    def _on_nav_signal(self, sender, payload: ControllerNavRequest):
+        self._apply_nav_request(payload)
+
+    def _on_cmd_vel_signal(self, sender, payload: Twist):
+        self._apply_cmd_vel(payload)
+
+    def _on_raw_image_signal(self, sender, payload):
+        self.camera_image = payload
+
     def get_imu_data(self):
         self.attitude_data = Vector3.from_tuple(self._bot.get_imu_attitude_data())
         self.magnometer_data = Vector3.from_tuple(self._bot.get_magnetometer_data())
@@ -83,15 +122,7 @@ class Controller(BaseNode):
         self.motion_data = Vector3.from_tuple(self._bot.get_motion_data())
 
     async def spinner(self):
-        return 
         self.get_imu_data()
-        if self.motion_data.x != 0 or self.motion_data.y != 0:
-            pass
-
-        if self.autodrive and self.autodriver is not None and self.camera_image is not None:
-            self.cmd_vel = self.autodriver.predict(self.camera_image)
-            #self.logger.info(f"Got prediction: {predictions}")
-
     
     def get_stats(self):
         return f"""
@@ -99,50 +130,37 @@ class Controller(BaseNode):
         """
     
     def stop(self):
+        self.cmd_vel = Twist()
+        self.prev_cmd_vel = Twist()
         self._bot.set_motor(0,0,0,0)
-
-
-    def _autodrive_changed(self, sender, payload):
-        self.autodrive = payload
-        if self.autodrive:
-            self._start_nav()
-        else:
-            self._reset_nav()
-
-    def _update_camera_image(self, sender, payload):
-        self.camera_image = payload
-
-    def _scale_cmd_vel(self, cmd: Twist):
-        
-        return(
-            self.vehicle.max_linear_velocity if cmd.linear.x > self.vehicle.max_linear_velocity else cmd.linear.x,
-            self.vehicle.max_linear_velocity if cmd.linear.y > self.vehicle.max_linear_velocity else cmd.linear.y,
-            self.vehicle.max_angular_velocity if cmd.angular.z > self.vehicle.max_angular_velocity else cmd.angular.z,
-        )
     
-    def _apply_nav_request(self, sender, payload: ControllerNavRequest):
-        odom = Kinematics.xywh_to_nav_target(payload.x, payload.y, payload.w, payload.h)
-        self._apply_cmd_vel(sender, odom.twist)
+    def _apply_nav_request(self, payload: ControllerNavRequest):
+        self.logger.info(f"applying nav request\n: {payload}")
+        odom = payload.target
+        self.logger.info(f"applying nav target\n: {odom}")
+        self._apply_cmd_vel(odom.twist)
 
-    def _apply_cmd_vel(self, sender, payload: Twist):
+    def _apply_cmd_vel(self, cmd_vel: Twist):
     
-        if payload == self.prev_cmd_vel and not payload.is_zero:
+        if cmd_vel == self.prev_cmd_vel and not cmd_vel.is_zero:
             self.logger.info("cmd_vel is the same as previous, skipping")
             return
         
-        
-        
-        vx, vy, omega = self._scale_cmd_vel(payload)
-        
-        velocity = self.vehicle.forward_kinematics(vx, vy, omega)
+        self.prev_cmd_vel = self.cmd_vel.copy()
+        self.cmd_vel = cmd_vel.copy()
+
+        scaled = self.vehicle.scale_twist(cmd_vel)
+         
+        velocity = self.vehicle.forward_kinematics(scaled.linear.x, scaled.linear.y, scaled.angular.z)
 
         power = self.vehicle.mps_to_motor_power(velocity)
-       
+
         self._bot.set_motor(power[0], power[2], power[1], power[3])
-        self.logger.info("---------------------------------------------------------------------")
-        self.logger.info(f"cmd: {payload}")
-        self.logger.info(f"power: {power}")
-        self.logger.info("---------------------------------------------------------------------")
+        self.logger.info("")
+        self.logger.info("-------------------APPLY CMD VEL--------------------")
+        self.logger.info(f"cmd: {cmd_vel}")
+        self.logger.info(f"scaled_cmd: {scaled}")
+        self.logger.info(f"power: {power}\n")
        
 
     def _reset_nav(self):

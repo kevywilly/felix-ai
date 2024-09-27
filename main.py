@@ -11,7 +11,7 @@ from felix.nodes import Robot
 from felix.nodes.camera import Camera
 from felix.mock.camera import Camera as MockCamera
 from felix.nodes.controller import Controller, ControllerNavRequest
-from felix.signals import joystick_signal, nav_target_signal, cmd_vel_signal, autodrive_signal
+from felix.signals import sig_joystick, sig_nav_target, sig_cmd_vel, sig_autodrive
 from lib.interfaces import Twist
 from felix.settings import settings
 
@@ -51,7 +51,7 @@ def stream():
 
 @app.post("/api/twist")
 def api_twist():
-    return cmd_vel_signal.send(
+    return sig_cmd_vel.send(
         "robot", payload=Twist.model_validate(request.get_json())
     ).dict
 
@@ -63,7 +63,7 @@ def api_get_autodrive():
 
 @app.post("/api/autodrive")
 def api_set_autodrive():
-    autodrive_signal.send("robot", payload=None)
+    sig_autodrive.send("robot", payload=None)
     return {"status": app.controller.autodrive}
 
 
@@ -72,7 +72,7 @@ def api_navigate():
 
     data = request.get_json()
     nav_request = ControllerNavRequest.model_validate(data)
-    _send(nav_target_signal, nav_request)
+    _send(sig_nav_target, nav_request)
 
     return data
 
@@ -80,8 +80,7 @@ def api_navigate():
 @app.post("/api/joystick")
 def api_joystick():
     data = request.get_json()
-    print(data)
-    _send(joystick_signal, JoystickRequest.model_validate(data))
+    _send(sig_joystick, JoystickRequest.model_validate(data))
     return data
 
 @app.post("/api/snapshots/<folder>/<label>")

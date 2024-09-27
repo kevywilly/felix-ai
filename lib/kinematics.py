@@ -1,7 +1,5 @@
 
-from lib.interfaces import Odometry
 
-from typing import Tuple
 import math
 import numpy as np
 
@@ -25,37 +23,6 @@ RPS_TO_RPM = 60/(2*math.pi)
 
 
 class Kinematics:
-
-    @staticmethod
-    def xywh_to_nav_target(x: int, y: int, w: int, h: int, fov: int = 160) -> Odometry:
-        _x = float((x - w/2)/(w/2))
-        _y = float((y - h/2)/(h/2))
-
-        # in our frame of robot motion x=y, y=x
-        #_vx = math.tanh((1-_y)/4) # reverse _y since + is counter clockwise 
-        #_vz = math.tanh(-_x) # reverse and shift positive since y=0 is top of image
-
-        degrees = _x*fov/2
-        radians = math.radians(degrees)
-
-        max_x = 0.1
-        max_z = 0.2
-
-        turn_factor = (degrees/(fov/2.0))
-        
-        _vx = float((1-abs(turn_factor)))*.5
-        _vz = float(turn_factor*-1)*1.0
-
-        angle = float(math.radians(_x*fov))
-
-        odom = Odometry()
-        odom.twist.linear.x = _vx
-        odom.twist.angular.z = _vz
-        odom.pose.orientation.z = radians
-
-        print(_x,_y,_vx,_vz,angle)
-        return odom
-
 
     @staticmethod
     def calc_rpm(ticks: int, time_elapsed: float, ticks_per_rev: int = 360) -> float:

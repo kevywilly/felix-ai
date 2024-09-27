@@ -7,7 +7,7 @@ from felix.vision.image import ImageUtils
 from lib.nodes import BaseNode
 import time
 from felix.vision.image_collector import ImageCollector
-from felix.signals import cmd_vel_signal, raw_image_signal
+from felix.signals import sig_cmd_vel, sig_raw_image
 
 
 class Robot(BaseNode):
@@ -27,7 +27,7 @@ class Robot(BaseNode):
         self.cmd_zero = True
         self._image_collector = ImageCollector()
 
-        raw_image_signal.connect(self.handle_raw_image)
+        sig_raw_image.connect(self.handle_raw_image)
 
         self.last_capture_time = time.time()
 

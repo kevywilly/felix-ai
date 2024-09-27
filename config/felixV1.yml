@@ -23,7 +23,9 @@ training:
   navigation_path:    !join [*root,/training/navigation]
   tags_path:          !join [*root,/training/tags]
   driving_data_path:  !join [*root,/training/driving]
-camera_sensor_mode: 3
+camera:
+  sensor_mode: 3
+  fov: 160
 camera_calibration: 
   image_width: 1640
   image_height: 1232
