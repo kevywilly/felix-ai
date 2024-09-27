@@ -9,6 +9,7 @@ let autodrive = false;
 let captureMode = false;
 let driveMode = false;
 
+let prevJoyData = { x: 0, y: 0, strafe: strafe };
 let joyData = { x: 0, y: 0, strafe: strafe };
 
 const post = (url, data, callback = null) => {
@@ -57,6 +58,12 @@ const createSnapshot = (label) => {
 }
 
 const applyJoyData = () => {
+    if (JSON.stringify(joyData) === JSON.stringify(prevJoyData)) {
+       if(!(joyData.x == 0 && joyData.y == 0)) {
+              return;
+       }
+    }
+    prevJoyData = {...joyData}
     post("api/joystick", joyData, (data) => {
         console.log(data);
     });

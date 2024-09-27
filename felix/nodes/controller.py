@@ -35,7 +35,10 @@ class Controller(BaseNode):
         super(Controller, self).__init__(**kwargs)
         self.publish_frequency_hz = publish_frequency_hz
         self.camera_image = None
+
         self.cmd_vel = Twist()
+        self.prev_cmd_vel = Twist()
+
         self.vehicle = settings.VEHICLE
         self._bot = Rosmaster(car_type=2, com=self.vehicle.yaboom_port)
         self._bot.create_receive_threading()
@@ -50,7 +53,6 @@ class Controller(BaseNode):
 
         self.angle_delta = 0
         self.camera_image = None
-        self.last_cmd = None
 
         self.print_stats()
         self.autodrive = False
@@ -81,10 +83,11 @@ class Controller(BaseNode):
         self.motion_data = Vector3.from_tuple(self._bot.get_motion_data())
 
     async def spinner(self):
+        return 
         self.get_imu_data()
         if self.motion_data.x != 0 or self.motion_data.y != 0:
             pass
-            #self.logger.info(f'twist: \t{self.motion_data} \ncmd: \t{self.last_cmd}')
+
         if self.autodrive and self.autodriver is not None and self.camera_image is not None:
             self.cmd_vel = self.autodriver.predict(self.camera_image)
             #self.logger.info(f"Got prediction: {predictions}")
@@ -123,22 +126,23 @@ class Controller(BaseNode):
 
     def _apply_cmd_vel(self, sender, payload: Twist):
     
+        if payload == self.prev_cmd_vel and not payload.is_zero:
+            self.logger.info("cmd_vel is the same as previous, skipping")
+            return
+        
+        
+        
         vx, vy, omega = self._scale_cmd_vel(payload)
         
-    
-        vel = self.vehicle.forward_kinematics(
-            vx, vy, omega
-        )
+        velocity = self.vehicle.forward_kinematics(vx, vy, omega)
 
-        pow = self.vehicle.mps_to_motor_power(vel)
+        power = self.vehicle.mps_to_motor_power(velocity)
        
-        self._bot.set_motor(pow[0], pow[2], pow[1], pow[3])
-        
-        self.logger.info(f"cmd: [{payload.linear.x},{payload.linear.y},{payload.angular.z}]")
-        self.logger.info(f"scaled: [{vx},{vy},{omega}]")
-        self.logger.info(f"power: {pow}")
-
-        self.last_cmd = payload
+        self._bot.set_motor(power[0], power[2], power[1], power[3])
+        self.logger.info("---------------------------------------------------------------------")
+        self.logger.info(f"cmd: {payload}")
+        self.logger.info(f"power: {power}")
+        self.logger.info("---------------------------------------------------------------------")
        
 
     def _reset_nav(self):
