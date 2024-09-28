@@ -79,7 +79,7 @@ class ObstacleAvoider(AutoDriver):
         self.num_targets = num_targets
   
         if self.model_file_exists:
-            self.model = torchvision.models.alexnet(weights=AlexNet_Weights.DEFAULT)
+            self.model = torchvision.models.alexnet()
             self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, num_targets)
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)

@@ -6,6 +6,7 @@ import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
+from torchvision.models import alexnet, AlexNet_Weights
 
 from felix.settings import settings
 from felix.training.datasets import CustomImageFolder
@@ -79,7 +80,7 @@ class ObstacleTrainer(Trainer):
 
         model_exists = os.path.isfile(self.model_file) 
 
-        model = models.alexnet(pretrained=False if model_exists else True)
+        model = alexnet(weights=(None if model_exists else AlexNet_Weights.DEFAULT))
         model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, self.num_categories)
         if model_exists:
             model.load_state_dict(torch.load(self.model_file))
