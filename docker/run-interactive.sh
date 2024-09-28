@@ -55,7 +55,7 @@ if [ $ARCH = "aarch64" ]; then
 		--volume /etc/nv_tegra_release:/etc/nv_tegra_release \
 		--volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
 		--volume ${HOME}/projects/felix-ai:/felix-ai \
-		--volume ${HOME}/projects/RPLidar:/rplidar \
+		--volume ${HOME}/data:/data \
 		--device /dev/snd \
 		--device /dev/bus/usb \
 		--device /dev/myserial \

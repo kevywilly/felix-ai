@@ -20,7 +20,7 @@ autodrive:
   linear: 0.3
   angular: 1.2
 training:
-  data_root:          &root /felix-ai/data
+  data_root:          &root /data/felix
   training_path:      !join [*root,/training]
   model_root:         !join [*root,/models]
   navigation_path:    !join [*root,/training/navigation]

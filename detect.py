@@ -10,8 +10,8 @@ from jetson_utils import cudaMemcpy, cudaToNumpy
 import os
 from felix.settings import settings
 
-os.environ["HF_HOME"]=os.path.join(settings.TRAINING.model_root,"huggingface")
-os.environ["TRANSFORMERS_CACHE"]=os.path.join(settings.TRAINING.model_root,"huggingface")
+# os.environ["HF_HOME"]=os.path.join(settings.TRAINING.model_root,"huggingface")
+# os.environ["TRANSFORMERS_CACHE"]=os.path.join(settings.TRAINING.model_root,"huggingface")
 
 # parse args and set some defaults
 args = ArgParser(extras=ArgParser.Defaults + ['prompt', 'video_input']).parse_args()
