@@ -123,7 +123,7 @@ def start_flask():
 
 async def main():
     app.robot = Robot()
-    app.camera = Camera()
+    app.camera = Camera() if not settings.MOCK_MODE else MockCamera()
     app.controller = Controller(frequency=30)
     app.joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
     app.autodriver = TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")

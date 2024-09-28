@@ -49,6 +49,7 @@ class AppSettings:
         joystick = peripherals.get('joystick',{})
         dampening = joystick.get('dampening',{})
         
+        self.MOCK_MODE = config.get("mock_mode", False)
         self.JOY_DAMPENING_MODE: int = dampening.get('mode',1)
         self.JOY_DAMPENING_CURVE_FACTOR: float = dampening.get('curve_factor',0.5)
         

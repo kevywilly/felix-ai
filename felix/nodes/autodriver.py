@@ -3,6 +3,7 @@ from lib.interfaces import Twist
 from lib.nodes.base import BaseNode
 import torch
 import torchvision
+from torchvision.models import alexnet, AlexNet_Weights
 import cv2
 import numpy as np
 import torch.nn.functional as F
@@ -78,7 +79,7 @@ class ObstacleAvoider(AutoDriver):
         self.num_targets = num_targets
   
         if self.model_file_exists:
-            self.model = torchvision.models.alexnet(pretrained=False)
+            self.model = torchvision.models.alexnet(weights=AlexNet_Weights.DEFAULT)
             self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, num_targets)
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)
