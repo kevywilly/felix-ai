@@ -1,6 +1,7 @@
 <!DOCTYPE HTML>
 <!--- https://github.com/bobboteck/JoyStick/blob/master/joy.html --->
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -8,40 +9,46 @@
     <title>Felix</title>
     <link rel="stylesheet" href="{{url_for('static',filename='css/output.css')}}">
 </head>
+
 <body>
-<div class="flex flex-row gap-2 pt-2 w-full items-center justify-center">
-    <div class="flex flex-col w-full lg:w-1/2 items-center">
-        <div class="image-nav-container cursor-pointer">
-            <div class="coordinates" id="coordinatesDisplay"></div>
-            <div class="flex flex-row  w-full">
-                <img id="navImage" src="api/stream" class="aspect-video cursor-pointer">
+    <div class="flex flex-row gap-2 pt-2 w-full items-center justify-center">
+        <div class="flex flex-col w-full lg:w-1/2 items-center">
+            <div class="image-nav-container cursor-pointer">
+                <div class="coordinates" id="coordinatesDisplay"></div>
+                <div class="flex flex-row  w-full">
+                    <img id="navImage" src="api/stream" class="aspect-video cursor-pointer">
+                </div>
+                <div class="capture-buttons-container">
+                    <button class="button-dark w-full" id="btnLeft">Left</button>
+                    <button class="button-dark w-full" id="btnForward">Forward</button>
+                    <button class="button-dark w-full" id="btnRight">Right</button>
+                </div>
             </div>
-            <div class="capture-buttons-container">
-                <button class="button-dark w-full" id="btnLeft">Left</button>
-                <button class="button-dark w-full" id="btnForward">Forward</button>
-                <button class="button-dark w-full" id="btnRight">Right</button>
+            <div class="settings-buttons-container">
+                <button class="button-dark w-full" id="btnCapture">Capture</button>
+                <button class="button-dark w-full" id="btnStrafe">Strafe</button>
+                <button class="button-dark w-full" id="btnAutoDrive">Auto Drive</button>
+                <button class="button-dark w-full" id="btnAutoNav">Auto Nav</button>
+            </div>
+            <div class="joystick-container">
+                <div class"flex flex-col">
+                    <div class="grid grid-cols-3 gap-6 my-4" id="controlPanel"></div>
+                    <div id="powerSlider" class="slider"></div>
+                </div>
+                <div id="joy1" style="width:200px;height:200px;"></div>
+            </div>
+            <div>
+                
             </div>
         </div>
-    <div class="settings-buttons-container">
-        <button class="button-dark w-full" id="btnCapture">Capture</button>
-        <button class="button-dark w-full" id="btnStrafe">Strafe</button>
-        <button class="button-dark w-full" id="btnAutoDrive">Auto Drive</button>
-        <button class="button-dark w-full" id="btnAutoNav">Auto Nav</button>
+        
     </div>
-    <div class="joystick-container">
-        <div id="joy1" style="width:200px;height:200px;"></div>
-    </div>
-    <div class="settings-buttons-container justify-center">
-        <button class="button-red w-1/4" id="btnStop" onclick="stop();">Stop</button>
-    </div>
-</div>
-</div>
 </body>
+
 </html>
-<script
-        src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-        crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"
+    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 <script src="{{url_for('static', filename='js/joy2.min.js')}}"></script>
-<script src="{{url_for('static', filename='js/api.js')}}"></script>
 <script src="{{url_for('static', filename='js/control.js')}}"></script>
+<script src="{{url_for('static', filename='js/slider.js')}}"></script>
+<script src="{{url_for('static', filename='js/api.js')}}"></script>

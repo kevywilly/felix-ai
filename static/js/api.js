@@ -3,7 +3,7 @@ const SNAPSHOT_FOLDER = 'ternary'
 
 
 let snapshots = { forward: 0, left: 0, right: 0 };
-
+let power = 30;
 let strafe = false;
 let autodrive = false;
 let captureMode = false;
@@ -78,6 +78,11 @@ const handleJoystick = (stickData) => {
     applyJoyData();
 }
 
+const handleUpdatePower = (value) => {
+    power = value;
+    console.log(power);
+}
+
 const captureButtons = [
     { id: "btnLeft", label: "left" },
     { id: "btnRight", label: "right" },
@@ -90,6 +95,30 @@ const joy1 = new JoyStick('joy1', {
     externalStrokeColor: "#999999",
 }, handleJoystick);
 
+
+const handleControlPanelChange = (value) => {
+    console.log(`change: ${value}`);
+    //post(`/api/move/${value}`)
+}
+
+const controlPanel = new ControlPanel(
+    id="controlPanel",
+    {onChange: handleControlPanelChange}
+);
+
+const powerSlider = new Slider(
+    "powerSlider",
+    {
+        min: 0,
+        max: 100,
+        step: 5,
+        value: power,
+        title: "Power",
+        name: "power",
+        vertical: false,
+        onChange: handleUpdatePower
+    }
+);
 
 const displayCoordinates = (x,y,w,h) => {
     $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${w} h:${h}`);
