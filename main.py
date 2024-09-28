@@ -13,7 +13,7 @@ from felix.nodes.autodriver import TernaryObstacleAvoider
 from felix.nodes.camera import Camera
 from felix.mock.camera import Camera as MockCamera
 from felix.nodes.controller import Controller, ControllerNavRequest
-from felix.signals import sig_joystick, sig_nav_target, sig_cmd_vel, sig_autodrive
+from felix.signals import sig_joystick, sig_nav_target, sig_cmd_vel, sig_autodrive, sig_stop
 from lib.interfaces import Twist
 from felix.settings import settings
 
@@ -42,6 +42,10 @@ def healthcheck():
 def _index():
     return render_template("index.html")
 
+@app.post("/api/stop")
+def _stop():
+    sig_stop.send("robot")
+    return {"status": "ok"}
 
 @app.route("/api/stream")
 def stream():
@@ -128,7 +132,7 @@ async def main():
         #app.robot.spin(frequency=0.5),
         app.controller.spin(),
         app.camera.spin(),
-        app.autodriver.spin()
+        app.autodriver.spin(frequency=app.camera.frequency)
     )
 
 if __name__ == "__main__":

@@ -46,8 +46,6 @@ class AutoDriver(BaseNode):
     def spinner(self):
         if self.is_active and self.raw_image is not None:
             self.predict(self.raw_image)
-        else:
-            print("skipping autodrive because status is False")
     
     def load_state_dict(self, model):
         try:
@@ -60,6 +58,9 @@ class AutoDriver(BaseNode):
             self.logger.warn(f'======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
             self.logger.warn(ex.__str__())
             self.model_loaded = False
+
+    def shutdown(self):
+        self.is_active = False
 
     @abstractmethod
     def predict(self, input) -> Twist:
