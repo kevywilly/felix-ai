@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import asyncio
+import threading
 import logging
 import os
 from blinker import NamedSignal
@@ -8,6 +9,7 @@ from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from felix.nodes import Robot
+from felix.nodes.autodriver import TernaryObstacleAvoider
 from felix.nodes.camera import Camera
 from felix.mock.camera import Camera as MockCamera
 from felix.nodes.controller import Controller, ControllerNavRequest
@@ -25,7 +27,6 @@ log.setLevel(logging.ERROR)
 CORS(app)
 
 cors = CORS(app, resource={r"/*": {"origins": "*"}})
-
 
 def _send(signal: NamedSignal, payload):
     signal.send("robot", payload=payload)
@@ -63,7 +64,7 @@ def api_get_autodrive():
 
 @app.post("/api/autodrive")
 def api_set_autodrive():
-    sig_autodrive.send("robot", payload=None)
+    sig_autodrive.send("robot")
     return {"status": app.controller.autodrive}
 
 
@@ -113,23 +114,28 @@ def get_image_raw():
     return {"image_raw": image.tolist()}
 
 
-async def main():
-    app.robot = Robot()
-    try:
-        app.camera = Camera()
-    except:  # noqa: E722
-        app.camera = MockCamera()
-
-    app.controller = Controller(frequency=30)
-    
-    app.joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
-
-    asyncio.create_task(app.robot.spin(frequency=0.5))
-    asyncio.create_task(app.camera.spin())
-    asyncio.create_task(app.controller.spin())
-    
+def start_flask():
     app.run(host="0.0.0.0", port=80, debug=False)
 
+async def main():
+    app.robot = Robot()
+    app.camera = Camera()
+    app.controller = Controller(frequency=30)
+    app.joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
+    app.autodriver = TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
+
+    await asyncio.gather(
+        #app.robot.spin(frequency=0.5),
+        app.controller.spin(),
+        app.camera.spin(),
+        app.autodriver.spin()
+    )
 
 if __name__ == "__main__":
+
+    flask_thread = threading.Thread(target=start_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+
     asyncio.run(main())
+    

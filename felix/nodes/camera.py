@@ -59,10 +59,10 @@ class Camera(BaseNode):
                 pass
             """
 
-    async def spinner(self):
+    def spinner(self):
         self._read(self.cap)
 
-    async def shutdown(self):
+    def shutdown(self):
         try:
             
             cv2.destroyAllWindows()

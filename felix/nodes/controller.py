@@ -121,7 +121,7 @@ class Controller(BaseNode):
         self.accelerometer_data = Vector3.from_tuple(self._bot.get_accelerometer_data())
         self.motion_data = Vector3.from_tuple(self._bot.get_motion_data())
 
-    async def spinner(self):
+    def spinner(self):
         self.get_imu_data()
     
     def get_stats(self):
@@ -162,7 +162,6 @@ class Controller(BaseNode):
         self.logger.info(f"scaled_cmd: {scaled}")
         self.logger.info(f"power: {power}\n")
        
-
     def _reset_nav(self):
         self.nav_delta = 0
         self.nav_delta_target = 0
@@ -177,7 +176,7 @@ class Controller(BaseNode):
         self.nav_yaw = self._bot.get_imu_attitude_data()[2]
         self.nav_start_time = time.time()
 
-    async def shutdown(self):
+    def shutdown(self):
         self.stop()
         self.autodrive = False
         

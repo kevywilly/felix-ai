@@ -9,7 +9,6 @@ import time
 from felix.vision.image_collector import ImageCollector
 from felix.signals import sig_cmd_vel, sig_raw_image
 
-
 class Robot(BaseNode):
     def __init__(self, **kwargs):
         super(Robot, self).__init__(**kwargs)

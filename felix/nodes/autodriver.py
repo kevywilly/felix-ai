@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from felix.interfaces.msg import Twist
+from lib.interfaces import Twist
+from lib.nodes.base import BaseNode
 import torch
 import torchvision
 import cv2
@@ -12,18 +13,41 @@ import logging
 import os
 torch.hub.set_dir(settings.TRAINING.model_root)
 from lib.log import logger
+from felix.signals import sig_cmd_vel, sig_nav_target, sig_raw_image, sig_stop, sig_autodrive
 
-class AutoDriver(ABC):
+class AutoDriver(BaseNode):
 
     logger = logger
 
-    def __init__(self, model_file):
-        self.device = torch.device('cuda' if torch.has_cuda else 'cpu')
+    def __init__(self, model_file, **kwargs):
+        super(AutoDriver, self).__init__(**kwargs)
+        self.device = torch.device('cuda' if torch.backends.cuda.is_built() else 'cpu')
         self.model_file = model_file
         self.model_loaded = False
-    
+        self.is_active = False
+        self.raw_image = None
+        
+        sig_raw_image.connect(self._on_raw_image)
+        sig_autodrive.connect(self._on_autodrive)
+        sig_stop.connect(self._on_stop)
+
+    def _on_raw_image(self, sender, payload):
+        self.raw_image = payload
+
+    def _on_autodrive(self, sender, **kwargs):
+        self.is_active = not self.is_active
+
+    def _on_stop(self, sender, **kwargs):
+        self.is_active = False
+
     def model_file_exists(self) -> bool:
         return os.path.isfile(self.model_file)
+    
+    def spinner(self):
+        if self.is_active and self.raw_image is not None:
+            self.predict(self.raw_image)
+        else:
+            print("skipping autodrive because status is False")
     
     def load_state_dict(self, model):
         try:
@@ -114,10 +138,8 @@ class TernaryObstacleAvoider(ObstacleAvoider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(num_targets=3, *args, **kwargs)
-
         self.status = self.NA
         
-
     def predict(self, input) -> Twist:
 
         cmd = Twist()
