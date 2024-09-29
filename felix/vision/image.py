@@ -7,7 +7,7 @@ class ImageUtils:
     def bgr8_to_jpeg(value, quality=75):
         try:
             return bytes(cv2.imencode('.jpg', value)[1])
-        except:
+        except:  # noqa: E722
             return None
         
     @staticmethod

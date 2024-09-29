@@ -10,7 +10,7 @@ from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from felix.nodes import Robot
 from felix.nodes.autodriver import TernaryObstacleAvoider
-from felix.nodes.camera import Camera
+from felix.nodes import VideoNode as Camera
 from felix.mock.camera import Camera as MockCamera
 from felix.nodes.controller import Controller, ControllerNavRequest
 from felix.signals import sig_joystick, sig_nav_target, sig_cmd_vel, sig_autodrive, sig_stop
