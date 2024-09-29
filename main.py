@@ -8,9 +8,7 @@ from blinker import NamedSignal
 from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
-from felix.nodes import Robot
-from felix.nodes.autodriver import TernaryObstacleAvoider
-from felix.nodes import VideoNode as Camera
+from felix.nodes import VideoNode, ChatNode, TernaryObstacleAvoider, Controller, Robot
 from felix.mock.camera import Camera as MockCamera
 from felix.nodes.controller import Controller, ControllerNavRequest
 from felix.signals import sig_joystick, sig_nav_target, sig_cmd_vel, sig_autodrive, sig_stop
@@ -123,10 +121,11 @@ def start_flask():
 
 async def main():
     app.robot = Robot()
-    app.camera = Camera() if not settings.MOCK_MODE else MockCamera()
+    app.camera = VideoNode if not settings.MOCK_MODE else MockCamera()
     app.controller = Controller(frequency=30)
     app.joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
-    app.autodriver = TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
+    app.chat = ChatNode(frequency=1)
+    #app.autodriver = TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
 
     await asyncio.gather(
         #app.robot.spin(frequency=0.5),
