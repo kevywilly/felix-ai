@@ -5,14 +5,14 @@ from nano_llm import NanoLLM, ChatHistory
 from nano_llm.utils import ArgParser, load_prompts
 
 
-obstacle_prompt = """
-                You are a mobile robot with a camera that has take a picture of the space in front of you.
-                Your goal is to drive without hitting any obstacles that are close to you.  Based on what you see in the image should you
-                go forward, turn left or turn right. You should prefer to go forward unless there are obstacles in your way.
-                """
 # os.environ["HF_HOME"]=os.path.join(settings.TRAINING.model_root,"huggingface")
 # os.environ["TRANSFORMERS_CACHE"]=os.path.join(settings.TRAINING.model_root,"huggingface")
 
+system_prompt = """
+You are an intelligant assistant. 
+You will receive an image as input. Your job is to describe the objects and specify where they are found in relation to an imagined
+vertical line running through the center of the image.
+"""
 # parse args and set some defaults
 args = ArgParser(extras=ArgParser.Defaults + ["prompt", "video_input"]).parse_args()
 prompts = load_prompts(args.prompt)
@@ -23,12 +23,7 @@ if not prompts:
 if not args.model:
     args.model = "Efficient-Large-Model/VILA1.5-3b"
 
-
-class ChatNode(BaseNode):
-    def __init__(self, frequency=1, **kwargs):
-        super(ChatNode, self).__init__(**kwargs)
-
-        self.llm = NanoLLM.from_pretrained(
+llm = NanoLLM.from_pretrained(
             args.model,
             api=args.api,
             quantization=args.quantization,
@@ -37,11 +32,19 @@ class ChatNode(BaseNode):
             vision_scaling=args.vision_scaling,
         )
 
-        assert self.llm.has_vision
+assert llm.has_vision
 
-        self.chat_history = ChatHistory(
-            self.llm, args.chat_template, args.system_prompt
-        )
+print("-------------- chat args --------------")
+print(args)
+print("---------------------------------------\n")
+
+chat_history = ChatHistory(
+    llm, args.chat_template, system_prompt
+)
+
+class ChatNode(BaseNode):
+    def __init__(self, frequency=1, **kwargs):
+        super(ChatNode, self).__init__(**kwargs)
 
         self.image_tensor = None
 
@@ -50,17 +53,22 @@ class ChatNode(BaseNode):
     def _on_image_tensor(self, sender, payload):
         self.image_tensor = payload
 
-    def chat(self, prompt: str):
-        self.chat_history.append("user", image=self.image_tensor)
-        self.chat_history.append("user", prompt, use_cache=True)
-        embedding, _ = self.chat_history.embed_chat()
+    def chat(self) -> str:
+        if self.image_tensor is None:
+            return "No image found"
+        
+        chat_history.append("user", image=self.image_tensor)
+        embedding, _ = chat_history.embed_chat()
+
+        reply_parts = []
 
         # print('>>', prompt)
-        reply = self.llm.generate(
+        reply = llm.generate(
             embedding,
             kv_cache=chat_history.kv_cache,
             max_new_tokens=args.max_new_tokens,
             min_new_tokens=args.min_new_tokens,
+            streaming=True,
             do_sample=args.do_sample,
             repetition_penalty=args.repetition_penalty,
             temperature=args.temperature,
@@ -68,24 +76,30 @@ class ChatNode(BaseNode):
         )
 
         for token in reply:
+            reply_parts.append(token if not reply.eos else "\n\n")
             termcolor.cprint(
                 token, "green", end="\n\n" if reply.eos else "", flush=True
             )
 
-        print("\n")
+        full_reply = ''.join(reply_parts)
+        #for token in reply:
+        #    termcolor.cprint(
+        #        token, "green", end="\n\n" if reply.eos else "", flush=True
+        #    )
+           
 
-        self.chat_history.reset()
+        
+        chat_history.append("bot", reply)
+
+        return full_reply
+
         # chat_history.append('bot', reply)
         # time_elapsed = time.perf_counter() - time_begin
         # print(f"time:  {time_elapsed*1000:.2f} ms  rate:  {1.0/time_elapsed:.2f} FPS")
 
     def spinner(self):
         if self.image_tensor is not None:
-            self.chat(
-                """
-                    Describe the image which represents the space directly in front of you.  Do you see any obstacles?
-                """
-            )
+            self.chat()
 
     def shutdown(self):
-        self.chat_history.reset()
+        chat_history.reset()

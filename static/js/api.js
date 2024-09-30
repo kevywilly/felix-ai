@@ -3,7 +3,7 @@ const SNAPSHOT_FOLDER = 'ternary'
 
 
 let snapshots = { forward: 0, left: 0, right: 0 };
-let power = 30;
+let power = 50;
 let strafe = false;
 let autodrive = false;
 let captureMode = false;
@@ -95,9 +95,31 @@ const joy1 = new JoyStick('joy1', {
     externalStrokeColor: "#999999",
 }, handleJoystick);
 
-
 const handleControlPanelChange = (value) => {
-    console.log(`change: ${value}`);
+    let joy = { x: 0.0, y: 0.0, strafe: false }
+    switch (value) {
+        case 'LEFT':
+            joy.x = -1.0;
+            joy.strafe = true;
+            break;
+        case 'RIGHT':
+            joy.x = 1.0;
+            joy.strafe = true;
+            break;
+        default:
+            break;
+    }
+
+    
+    joy.x *= (power / 100.0);
+    joy.y *= (power / 100.0);
+
+    console.log(joy);
+
+    post("api/joystick", joy, (data) => {
+        console.log("received:")
+        console.log(data);
+    });
     //post(`/api/move/${value}`)
 }
 
@@ -112,7 +134,7 @@ const powerSlider = new Slider(
         min: 0,
         max: 100,
         step: 5,
-        value: power,
+        defaultValue: power,
         title: "Power",
         name: "power",
         vertical: false,

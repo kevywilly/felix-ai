@@ -10,15 +10,9 @@ var ControlPanel = (function (id, params={}) {
     elem = document.getElementById(id);
 
     const buttons = [
-        {value: "FORWARD_LT", label: "Forward LT"},
-        {value: "FORWARD", label: "Forward"},
-        {value: "FORWARD_RT", label: "Forward RT"},
         {value: "LEFT", label: "Left"},
         {value: "STOP", label: "Stop"},
         {value: "RIGHT", label: "Right"},
-        {value: "BACKWARD_LT", label: "Backward LT"},
-        {value: "BACKWARD", label: "Backward"},
-        {value: "BACKWARD_RT", label: "Backward RT"},
     ]
 
 
@@ -50,7 +44,7 @@ var ControlPanel = (function (id, params={}) {
         let e = document.createElement("button");
         e.id=v
         e.innerText=buttons[i].label;
-        e.className="button button-blue";
+        e.className="button button-blue text-base";
         if(v==="STOP") {
             e.style.background="#ff0000"
         }

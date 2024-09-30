@@ -58,4 +58,4 @@ class MecanumVehicle(Vehicle):
     
     @cached_property
     def velocity_scaler(self):
-        return np.array([self.max_linear_velocity, 0, self.max_angular_velocity],dtype=np.float32)
+        return np.array([self.max_linear_velocity, self.max_linear_velocity, self.max_angular_velocity],dtype=np.float32)
