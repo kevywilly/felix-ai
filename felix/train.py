@@ -15,8 +15,8 @@ def train_binary_obstacles():
 def train_ternary_obstacles():
     return ObstacleTrainer(
         images_path=os.path.join(settings.TRAINING.data_root, "training/ternary"),
-        random_flip=True,
-        target_flips={1: 2, 2: 1},
+        #random_flip=True,
+        #target_flips={1: 2, 2: 1},
         model_file=os.path.join(settings.TRAINING.model_root, 'checkpoints/ternary_obstacle_avoidance.pth')
     )
 

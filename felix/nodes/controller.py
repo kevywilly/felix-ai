@@ -1,9 +1,11 @@
 
 import math
 from typing import Optional
+from felix.motion.joystick import JoystickRequest
 from felix.settings import settings
 from lib.interfaces import Odometry, Twist, Vector3
 from lib.nodes.base import BaseNode
+import numpy as np
 
 if settings.ROBOT == 'felixMac':
     from lib.mock.rosmaster import MockRosmaster as Rosmaster
@@ -14,12 +16,18 @@ import numpy as np
 import time
 from felix.signals import sig_cmd_vel, sig_nav_target, sig_raw_image, sig_stop
 
-class ControllerNavRequest:
+class NavRequest:
+    """
+    Request navigation toward an x,y point on an image.
+    """
     def __init__(self, x: any, y: any, w: any, h: any):
-        # x = horizontal coordinate
-        # y = vertical coordinate
-        # w = width of canvas
-        # h = height of canvas
+
+        """
+        x = horizontal coordinate
+        y = vertical coordinate
+        w = width of canvas
+        h = height of canvas
+        """
 
         self.x = float(x)
         self.y = float(y)
@@ -49,9 +57,8 @@ class ControllerNavRequest:
 
     @classmethod
     def model_validate(cls, data):
-        return ControllerNavRequest(**data)
-    
-    
+        return NavRequest(**data)
+
 
 class Controller(BaseNode):
 
@@ -105,7 +112,7 @@ class Controller(BaseNode):
     def _on_stop_signal(self, sender, **kwargs):
         self.stop()
 
-    def _on_nav_signal(self, sender, payload: ControllerNavRequest):
+    def _on_nav_signal(self, sender, payload: NavRequest):
         self._apply_nav_request(payload)
 
     def _on_cmd_vel_signal(self, sender, payload: Twist):
@@ -134,7 +141,7 @@ class Controller(BaseNode):
         self.prev_cmd_vel = Twist()
         self._bot.set_motor(0,0,0,0)
     
-    def _apply_nav_request(self, payload: ControllerNavRequest):
+    def _apply_nav_request(self, payload: NavRequest):
         self.logger.info(f"applying nav request\n: {payload}")
         odom = payload.target
         self.logger.info(f"applying nav target\n: {odom}")

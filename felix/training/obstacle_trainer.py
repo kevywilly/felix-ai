@@ -10,13 +10,14 @@ from torchvision.models import alexnet, AlexNet_Weights
 
 from felix.settings import settings
 from felix.training.datasets import CustomImageFolder
+from abc import ABC, abstractmethod
+
 
 if not os.path.exists(settings.TRAINING.model_root):
             os.makedirs(settings.TRAINING.model_root)
             
 torch.hub.set_dir(settings.TRAINING.model_root)
 
-from abc import ABC, abstractmethod
 
 class Trainer(ABC):
     def __init__(self, model_file, test_pct = 20, epochs=30, lr=0.001, momentum=0.9):
@@ -80,13 +81,13 @@ class ObstacleTrainer(Trainer):
 
         model_exists = os.path.isfile(self.model_file) 
 
-        model = alexnet(weights=(None if model_exists else AlexNet_Weights.DEFAULT))
+        model = alexnet(weights=None)
         model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, self.num_categories)
         if model_exists:
             model.load_state_dict(torch.load(self.model_file))
         
         
-        device = torch.device('cuda' if torch.has_cuda else 'cpu')
+        device = torch.device('cuda' if torch.backends.cuda.is_built() else 'cpu')
         model = model.to(device)
 
         best_accuracy = 0.0
@@ -112,13 +113,14 @@ class ObstacleTrainer(Trainer):
                 print(f'error: {test_error_count}')
             
             test_accuracy = 1.0 - float(test_error_count) / float(len(test_dataset))
+            print(f"epoch: {epoch} accuracy: {test_accuracy}")
             print('%d: %f' % (epoch, test_accuracy))
             if test_accuracy > best_accuracy:
                 torch.save(model.state_dict(), self.model_file)
                 best_accuracy = test_accuracy
 
             if test_accuracy >= 0.99:
-                 print(f'Goal reached - test accuracy >= 0.99')
+                 print(f'Goal reached - test accuracy  #{test_accuracy} >= 0.99')
                  break
                  
     

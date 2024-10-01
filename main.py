@@ -10,14 +10,13 @@ from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from felix.nodes import (
     VideoNode,
-    ChatNode,
     TernaryObstacleAvoider,
     Controller,
     Robot,
     Camera,
 )
 from felix.mock.camera import Camera as MockCamera
-from felix.nodes.controller import Controller, ControllerNavRequest
+from felix.nodes.controller import Controller, NavRequest
 from felix.signals import (
     sig_joystick,
     sig_nav_target,
@@ -41,7 +40,7 @@ CORS(app, resources={r"/generate": {"origins": "*"}})
 
 robot = Robot()
 video = VideoNode()  # if not settings.MOCK_MODE else MockCamera()
-chat_node = ChatNode()
+# chat_node = ChatNode()
 controller = Controller(frequency=30)
 joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
 
@@ -95,7 +94,7 @@ def api_set_autodrive():
 @app.post("/api/navigate")
 def api_navigate():
     data = request.get_json()
-    nav_request = ControllerNavRequest.model_validate(data)
+    nav_request = NavRequest.model_validate(data)
     _send(sig_nav_target, nav_request)
 
     return data
@@ -138,6 +137,7 @@ def get_image_raw():
     return {"image_raw": image.tolist()}
 
 
+"""
 @app.get("/api/describe")
 def describe():
     response = chat_node.chat()
@@ -150,6 +150,7 @@ def chat():
     reply = chat.chat(prompt=prompt)
     return {"reply": reply}
 
+"""
 
 def start_flask():
     app.run(host="0.0.0.0", port=80, debug=False)

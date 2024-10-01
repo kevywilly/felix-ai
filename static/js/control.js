@@ -10,11 +10,15 @@ var ControlPanel = (function (id, params={}) {
     elem = document.getElementById(id);
 
     const buttons = [
-        {value: "LEFT", label: "Left"},
-        {value: "STOP", label: "Stop"},
-        {value: "RIGHT", label: "Right"},
+        {value: 135, label: "ForwardLT"},
+        {value: 90.0, label: "Forward"},
+        {value: 45.0, label: "ForwardRT"},
+        {value: 180.0, label: "Left"},
+        {value: null, label: "Stop"},
+        {value: 225.0, label: "BackwardLT"},
+        {value: 270.0, label: "Backward"},
+        {value: 315.0, label: "BackwardRT"}
     ]
-
 
     let currentValue = "";
     let previousValue = "";
