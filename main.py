@@ -9,14 +9,12 @@ from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from felix.nodes import (
-    VideoNode,
     TernaryObstacleAvoider,
     Controller,
     Robot,
-    Camera,
 )
-from felix.mock.camera import Camera as MockCamera
-from felix.nodes.controller import Controller, NavRequest
+
+from felix.nodes.controller import  NavRequest
 from felix.signals import (
     sig_joystick,
     sig_nav_target,
@@ -26,6 +24,11 @@ from felix.signals import (
 )
 from lib.interfaces import Twist
 from felix.settings import settings
+
+if settings.MOCK_MODE:
+    from felix.mock.camera import Camera as VideoNode
+else:
+    from felix.nodes.video import VideoNode
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 

@@ -96,6 +96,15 @@ const joy1 = new JoyStick('joy1', {
 }, handleJoystick);
 
 const handleControlPanelChange = (value) => {
+    console.log(value);
+    prevJoyData = { x: 0, y: 0, strafe: strafe };
+    joyData = value.value;
+    joyData.x *= (power / 100.0);
+    joyData.y *= (power / 100.0);
+    applyJoyData();
+}
+
+const handleControlPanelChange2 = (value) => {
     let joy = { x: 0.0, y: 0.0, strafe: false }
     switch (value) {
         case 'LEFT':
@@ -120,7 +129,7 @@ const handleControlPanelChange = (value) => {
         console.log("received:")
         console.log(data);
     });
-    //post(`/api/move/${value}`)
+   
 }
 
 const controlPanel = new ControlPanel(
