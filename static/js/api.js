@@ -131,7 +131,7 @@ const handleControlPanelChange2 = (value) => {
     });
    
 }
-
+/*
 const controlPanel = new ControlPanel(
     id="controlPanel",
     {onChange: handleControlPanelChange}
@@ -146,11 +146,11 @@ const powerSlider = new Slider(
         defaultValue: power,
         title: "Power",
         name: "power",
-        vertical: false,
+        vertical: true,
         onChange: handleUpdatePower
     }
 );
-
+*/
 const displayCoordinates = (x,y,w,h) => {
     $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${w} h:${h}`);
 }
