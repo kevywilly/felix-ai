@@ -9,7 +9,7 @@ from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from nano_llm.utils import ArgParser
-from video_agent import VideoStream
+from felix.agents.video_agent import VideoStream
 
 from felix.nodes import (
     Controller,
@@ -165,8 +165,8 @@ def start_flask():
 
 
 def start_video():
-    args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
-    agent = VideoStream(**args).run()
+    # args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
+    VideoStream(log=False).run()
 
 async def main():
     await asyncio.gather(

@@ -73,7 +73,8 @@ const stop = () => {
     applyJoyData();
 }
 
-const handleJoystick = (stickData) => {
+const handleJoystick = (joyNum, stickData) => {
+    strafe = (joyNum === 2)
     joyData = { x: parseFloat(stickData.x) / 100.0, y: parseFloat(stickData.y) / 100.0, strafe: strafe }
     applyJoyData();
 }
@@ -93,7 +94,14 @@ const joy1 = new JoyStick('joy1', {
     "title": "joy1",
     internalFillColor: "#656565",
     externalStrokeColor: "#999999",
-}, handleJoystick);
+}, (d) => handleJoystick(1,d));
+
+const joy2 = new JoyStick('joy2', {
+    "title": "joy2",
+    internalFillColor: "#656565",
+    externalStrokeColor: "#999999",
+}, (d) => handleJoystick(2,d));
+
 
 const handleControlPanelChange = (value) => {
     console.log(value);

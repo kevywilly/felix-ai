@@ -26,7 +26,7 @@
     }
 
     .joystick-container {
-        @apply flex flex-col justify-between items-center gap-x-16 px-4
+        @apply flex flex-row justify-between items-center gap-x-32 px-4
     }
 
     .button {

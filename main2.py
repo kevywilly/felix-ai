@@ -9,7 +9,7 @@ from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from nano_llm.utils import ArgParser
-from video_agent import VideoStream
+from felix.agents.video_agent import VideoStream
 
 from felix.nodes import (
     Controller,

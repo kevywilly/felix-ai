@@ -25,7 +25,15 @@ class VideoStream(Agent):
     
     It's also used as a basic test of video streaming before using more complex agents that rely on it.
     """
-    def __init__(self, video_input=None, video_output=None, **kwargs):
+    def __init__(self, 
+                 video_input="csi://0", 
+                 video_output="webrtc://@:8554/output", 
+                 video_input_width=1280, 
+                 video_input_height=720, 
+                 video_input_framerate=60, 
+                 **kwargs
+        ):
+        
         """
         Args:
           video_input (Plugin|str): the VideoSource plugin instance, or URL of the video stream or camera device.
@@ -37,9 +45,10 @@ class VideoStream(Agent):
         self.image = None
 
         self.video_source = VideoSource(video_input, 
-        video_input_width=640, 
-        video_input_height=320, 
-        video_input_framerate=30, **kwargs
+            video_input_width=video_input_width, 
+            video_input_height=video_input_height, 
+            video_input_framerate=video_input_framerate,
+            **kwargs
         )
         self.video_output = VideoOutput(video_output, **kwargs)
         

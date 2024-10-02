@@ -8,6 +8,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Felix</title>
     <link rel="stylesheet" href="{{url_for('static',filename='css/output.css')}}">
+
+    <style>
+        .iframe-container {
+        width: 100vmin; /* The container now takes up 100% of its parent */
+        height: 0;
+        padding-bottom: 56.25%; /* Maintains the 16:9 aspect ratio */
+        overflow: hidden;
+        position: relative;
+        }
+
+        .iframe-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1280px;
+        height: 720px;
+        transform-origin: 0 0;
+        }
+      </style>
 </head>
 
 <body>
@@ -16,15 +35,9 @@
             <div class="image-nav-container cursor-pointer">
                 <div class="coordinates" id="coordinatesDisplay"></div>
                 <div class="flex flex-row  w-full">
-                    <iframe 
-                    id="navImage" 
-                    src="https://orin1:8554/" 
-                    class="aspect-video cursor-pointer w-full"
-                    width="672"
-                    height="357"
-                    scrolling="no"
-                    frameborder="0"
-                    ></iframe>
+                    <div class="iframe-container w-full">
+                        <iframe id="navImage", src="https://orin1:8554/"  frameborder="0" scrolling="no"></iframe>
+                      </div>
                     <!---img id="navImage" src="api/stream" class="aspect-video cursor-pointer"--->
                 </div>
                 <div class="capture-buttons-container">
@@ -44,10 +57,26 @@
                     <div class="grid grid-cols-3 gap-x-4 gap-y-3 my-2" w-full id="controlPanel"> </div>
                     <div id="powerSlider" class="slider-vertical"></div>
                 </div--->
-                <div id="joy1" style="width:200px;height:200px;"></div>
+                <div id="joy1" style="width:180px;height:180px;"></div>
+                <div id="joy2" style="width:180px;height:180px;"></div>
             </div>
         </div>
     </div>
+    <script>
+        function resizeIframe() {
+          var container = document.querySelector('.iframe-container');
+          var iframe = container.querySelector('iframe');
+          var containerWidth = container.offsetWidth;
+          var scaleFactor = containerWidth / 1280; // 1280 is the original width of the video
+      
+          iframe.style.transform = 'scale(' + scaleFactor + ')';
+          iframe.style.width = 1280 + 'px';
+          iframe.style.height = 720 + 'px';
+        }
+      
+        window.addEventListener('resize', resizeIframe);
+        window.addEventListener('load', resizeIframe); // Ensure it runs on page load
+      </script>
 </body>
 
 </html>
