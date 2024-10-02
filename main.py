@@ -8,8 +8,8 @@ from blinker import NamedSignal
 from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
+
 from felix.nodes import (
-    TernaryObstacleAvoider,
     Controller,
     Robot,
 )
@@ -47,6 +47,12 @@ video = VideoNode()  # if not settings.MOCK_MODE else MockCamera()
 controller = Controller(frequency=30)
 joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
 
+if settings.TRAINING.mode == "ternary":
+    from felix.nodes.autodriver import TernaryObstacleAvoider
+    autodrive = TernaryObstacleAvoider()
+else:
+    from felix.nodes.autodriver import BinaryObstacleAvoider
+    autodrive = BinaryObstacleAvoider()
 
 def _send(signal: NamedSignal, payload):
     signal.send("robot", payload=payload)
@@ -85,13 +91,13 @@ def api_twist():
 
 @app.get("/api/autodrive")
 def api_get_autodrive():
-    return {"status": controller.autodrive}
+    return {"status": autodrive.is_active}
 
 
 @app.post("/api/autodrive")
 def api_set_autodrive():
     sig_autodrive.send("robot")
-    return {"status": app.controller.autodrive}
+    return {"status": autodrive.is_active}
 
 
 @app.post("/api/navigate")
@@ -163,7 +169,7 @@ async def main():
     await asyncio.gather(
         controller.spin(),
         video.spin(),
-        # chat_node.spin(1)
+        autodrive.spin(20)
     )
 
 

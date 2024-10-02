@@ -26,12 +26,22 @@ if not(_ROBOT):
 
 class TrainingConfig:
     def __init__(self, config):
+        self.mode = config.get('training').get('mode')
         self.data_root = config.get('training').get('data_root')
         self.training_path = config.get('training').get('training_path')
         self.tags_path = config.get('training').get('tags_path')
         self.navigation_path = config.get('training').get('navigation_path')
         self.model_root = config.get('training').get('model_root')
         self.driving_data_path = config.get('training').get('driving_data_path')
+        self.num_categories =3 if self.mode == 'ternary' else 2
+
+    @property
+    def training_model_path(self):
+        return os.path.join(self.model_root, f'checkpoints/{self.mode}_obstacle_avoidance.pth')
+    
+    @property
+    def training_images_path(self):
+        return os.path.join(self.data_root, f"training/{self.mode}")
 
     def training_folder(self,folder):
         return os.path.join(self.training_path,folder.lower())

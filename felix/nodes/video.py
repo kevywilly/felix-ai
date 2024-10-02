@@ -14,7 +14,7 @@ class FLIP_AXIS(int, Enum):
 
 class VideoNode(BaseNode):
 
-    def __init__(self, input: str = "csi://0", width: int = 1280, height: int = 720, framerate: int = 30, flip: FLIP_AXIS=FLIP_AXIS.NONE):
+    def __init__(self, input: str = "csi://0", width: int = 1280, height: int = 720, framerate: int = 60, flip: FLIP_AXIS=FLIP_AXIS.NONE):
         super(VideoNode, self).__init__(frequency=framerate)
 
         self.logger.info("Starting Video Node")

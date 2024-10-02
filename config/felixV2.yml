@@ -17,9 +17,10 @@ peripherals:
       curve_factor: 0.5
 capture_when_driving: True
 autodrive:
-  linear: 0.3
-  angular: 1.2
+  linear: 0.4
+  angular: 1.6
 training:
+  mode: binary
   data_root:          &root /data/felix
   training_path:      !join [*root,/training]
   model_root:         !join [*root,/models]

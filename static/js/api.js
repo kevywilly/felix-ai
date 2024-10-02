@@ -191,6 +191,7 @@ $(function () {
     $("#btnAutoDrive").on("click", () => {
         autodrive = !autodrive;
         displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
+        post("api/autodrive", { })
     })
     $("#btnAutoNav").on("click", () => {
         driveMode = !driveMode;

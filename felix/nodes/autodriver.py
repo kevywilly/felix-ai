@@ -1,26 +1,24 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from lib.interfaces import Twist
 from lib.nodes.base import BaseNode
 import torch
 import torchvision
-from torchvision.models import alexnet, AlexNet_Weights
 import cv2
 import numpy as np
 import torch.nn.functional as F
-import time
 from felix.settings import settings
 from felix.vision.image import ImageUtils
-import logging
 import os
-torch.hub.set_dir(settings.TRAINING.model_root)
 from lib.log import logger
-from felix.signals import sig_cmd_vel, sig_nav_target, sig_raw_image, sig_stop, sig_autodrive
+from felix.signals import sig_raw_image, sig_stop, sig_autodrive, sig_cmd_vel
+
+torch.hub.set_dir(settings.TRAINING.model_root)
 
 class AutoDriver(BaseNode):
 
     logger = logger
 
-    def __init__(self, model_file, **kwargs):
+    def __init__(self, model_file=settings.TRAINING.training_model_path, **kwargs):
         super(AutoDriver, self).__init__(**kwargs)
         self.device = torch.device('cuda' if torch.backends.cuda.is_built() else 'cpu')
         self.model_file = model_file
@@ -36,27 +34,41 @@ class AutoDriver(BaseNode):
         self.raw_image = payload
 
     def _on_autodrive(self, sender, **kwargs):
+        logger.info("AutoDrive signal received")
         self.is_active = not self.is_active
+        if not self.is_active:
+            sig_cmd_vel.send("autodrive", payload=Twist())
+        logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
+        logger.info("Stop signal received")
         self.is_active = False
+        logger.info(f"AutoDrive is_active: {self.is_active}")
 
+    @property
     def model_file_exists(self) -> bool:
         return os.path.isfile(self.model_file)
     
     def spinner(self):
         if self.is_active and self.raw_image is not None:
-            self.predict(self.raw_image)
+            try:
+                cmd = self.predict(self.raw_image)
+                logger.info(f"AutoDrive: {cmd}")
+                sig_cmd_vel.send("autodrive", payload=cmd)
+            except:  # noqa: E722
+                sig_cmd_vel.send("autodrive", payload=Twist())
+                sig_stop.send("autodrive")
+            
     
     def load_state_dict(self, model):
         try:
-            if self.model_file_exists():
+            if self.model_file_exists:
                 model.load_state_dict(torch.load(self.model_file))
                 self.model_loaded = True
             else:
                 raise Exception("model file does not exist")
         except Exception as ex:
-            self.logger.warn(f'======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
+            self.logger.warn('======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
             self.logger.warn(ex.__str__())
             self.model_loaded = False
 
@@ -72,17 +84,34 @@ class ObstacleAvoider(AutoDriver):
     stdev = 255.0 * np.array([0.229, 0.224, 0.225])
     normalize = torchvision.transforms.Normalize(mean, stdev)
 
-    def __init__(self, model_file, num_targets, linear = settings.autodrive_linear, angular = settings.autodrive_angular):
+    def __init__(self, 
+                 model_file = settings.TRAINING.training_model_path, 
+                 num_targets = settings.TRAINING.num_categories, 
+                 linear = settings.autodrive_linear, 
+                 angular = settings.autodrive_angular):
         super().__init__(model_file)
         self.linear = linear
         self.angular = angular
         self.num_targets = num_targets
   
         if self.model_file_exists:
-            self.model = torchvision.models.alexnet()
-            self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, num_targets)
+            self.model = torchvision.models.alexnet(weights=None)
+            self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, self.num_targets)
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)
+
+        self._print_status()
+
+    def _print_status(self):
+
+        print("-------------------------------------------------------------------")
+        print(f"\t-- model file: {self.model_file}")
+        print(f"\t-- model exists: {self.model_file_exists}")
+        print(f"\t-- model loaded: {self.model_loaded}")
+        print(f"\t-- targets: {self.num_targets}")
+        print(f"\t-- linear: {self.linear}")
+        print(f"\t-- angular: {self.angular}")
+        print("--------------------------------------------------------------------")
 
     def preprocess(self, sensor_image):
         x = ImageUtils.bgr8_to_rgb8(sensor_image)
@@ -103,33 +132,47 @@ class ObstacleAvoider(AutoDriver):
         
         # we apply the `softmax` function to normalize the output vector so it sums to 1 (which makes it a probability distribution)
         y = F.softmax(y, dim=1)
-        print(y)
+        print("softmax", y)
         return y.flatten()
 
 class BinaryObstacleAvoider(ObstacleAvoider):
 
+    NA = -1
+    BLOCKED = 0
+    FORWARD = 1
+
     def __init__(self, *args, **kwargs):
-        super().__init__(num_targets=2, *args, **kwargs)
+        super().__init__(
+            model_file=settings.TRAINING.training_model_path,
+            num_targets=2 
+        )
+        self.status = self.NA
 
     def predict(self, input) -> Twist:
 
-        t = Twist()
+        cmd = Twist()
 
         predictions = self.get_predictions(input)
 
         if predictions is None:
-            return t
+            print("No predictions")
+            return cmd
         
-        prob_blocked = float(predictions[0])
+        forward = float(predictions[self.FORWARD])
+        blocked = float(predictions[self.BLOCKED])
+        print(predictions)
 
-        if prob_blocked < 0.5:
-            t.linear.x = self.linear
-            t.angular.z = 0.0
-        else:
-            t.angular.z = self.angular
-            t.linear.x = 0.0
-
-        return prob_blocked, t
+        if forward > 0.5:
+            cmd.linear.x = self.linear
+            cmd.angular.z = 0.0
+            self.status = self.FORWARD
+        elif blocked >= 0.5:
+            cmd.linear.x = 0.0
+            cmd.angular.z = self.angular
+            self.status = self.BLOCKED
+        
+        print("autodrive:", cmd)
+        return cmd
 
 class TernaryObstacleAvoider(ObstacleAvoider):
 
@@ -138,8 +181,11 @@ class TernaryObstacleAvoider(ObstacleAvoider):
     LEFT = 1
     RIGHT = 2
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(num_targets=3, *args, **kwargs)
+    def __init__(self):
+        super().__init__(
+            model_file=settings.TRAINING.training_model_path,
+            num_targets=3,
+        )
         self.status = self.NA
         
     def predict(self, input) -> Twist:
@@ -167,7 +213,8 @@ class TernaryObstacleAvoider(ObstacleAvoider):
             cmd.linear.x = 0.0
             cmd.angular.z = -self.angular
             self.status = self.RIGHT
-
+        
+        print("autodrive:", cmd)
         return cmd
             
         
