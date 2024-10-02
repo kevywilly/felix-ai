@@ -20,6 +20,8 @@ if not os.path.exists(settings.TRAINING.model_root):
 torch.hub.set_dir(settings.TRAINING.model_root)
 
 
+
+    
 class Trainer(ABC):
     def __init__(self, model_file, test_pct=40, epochs=30, lr=0.001, momentum=0.9):
         self.test_pct = test_pct
@@ -44,26 +46,29 @@ class ObstacleTrainer(Trainer):
         self.num_categories = len(self.categories)
         self.random_flip = random_flip
         self.target_flips = target_flips
-        print(f"num_categories={self.num_categories}")
+
+        print("---------------------------------------------------")
+        print("\tObstacleTrainer")
+        print("---------------------------------------------------")
+        print(f"\t-- num_categories: {self.num_categories}")
+        print(f"\t-- images_path: {self.images_path}")
+        print(f"\t-- random_flip: {self.random_flip}")
+        print(f"\t-- target_flips: {self.target_flips}\n")
 
     def _get_dataset(self):
 
         items = [
-                transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
-                transforms.Resize((224, 224)),
-                ]
-        
-        if self.num_categories == 2:
-            items += [transforms.RandomHorizontalFlip()]
-        
-        items += [
-                    transforms.ToTensor(),
-                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                ]
+            transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ]
 
-        return ImageFolder(
+        return CustomImageFolder(
             self.images_path,
             transforms.Compose(items),
+            target_flips=self.target_flips,
+            random_flip=self.random_flip,
         )
 
     def train(self):

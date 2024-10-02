@@ -95,13 +95,13 @@ class Controller(BaseNode):
         self.loaded()
     
     def print_stats(self):
-        s = f"""
-            min_linear_velocity: {self.vehicle.min_linear_velocity}
-            min_angular_velicity: {self.vehicle.min_angular_velocity}
-            max_linear_velocity: {self.vehicle.max_linear_velocity}
-            max_angular_velicity: {self.vehicle.max_angular_velocity}
-        """
-        self.logger.info(s)
+        print("------------------------------------------------------")
+        print("\tVehicle Settings")
+        print("------------------------------------------------------")
+        print(f"\tmin_linear_velocity: {self.vehicle.min_linear_velocity}")
+        print(f"\tmin_angular_velicity: {self.vehicle.min_angular_velocity}")
+        print(f"\tmax_linear_velocity: {self.vehicle.max_linear_velocity}")
+        print(f"\tmax_angular_velicity: {self.vehicle.max_angular_velocity}")
 
     def _connect_signals(self):
         sig_stop.connect(self._on_stop_signal)

@@ -16,7 +16,16 @@
             <div class="image-nav-container cursor-pointer">
                 <div class="coordinates" id="coordinatesDisplay"></div>
                 <div class="flex flex-row  w-full">
-                    <img id="navImage" src="api/stream" class="aspect-video cursor-pointer">
+                    <iframe 
+                    id="navImage" 
+                    src="https://orin1:8554/" 
+                    class="aspect-video cursor-pointer w-full"
+                    width="672"
+                    height="357"
+                    scrolling="no"
+                    frameborder="0"
+                    ></iframe>
+                    <!---img id="navImage" src="api/stream" class="aspect-video cursor-pointer"--->
                 </div>
                 <div class="capture-buttons-container">
                     <button class="button-dark w-full" id="btnLeft">Left</button>
