@@ -6,7 +6,7 @@
 @layer components {
 
     .section-header {
-        @apply prose-sm text-center bg-blue-400  font-semibold
+        @apply prose-sm text-center bg-blue-400 font-semibold
     }
 
     .image-nav-container {
@@ -26,7 +26,7 @@
     }
 
     .joystick-container {
-        @apply flex flex-row justify-between items-center gap-x-32 px-4
+        @apply flex flex-row justify-between items-center gap-x-32 px-4 mt-4
     }
 
     .button {
@@ -79,4 +79,3 @@ body {
     background-color: #101010;
     color: #f0f0f0;
 }
-

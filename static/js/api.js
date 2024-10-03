@@ -1,16 +1,16 @@
 const NAVZERO = { x: 0, y: 0, w: 0, h: 0 }
 const SNAPSHOT_FOLDER = 'ternary'
 
-
 let snapshots = { forward: 0, left: 0, right: 0 };
-let power = 50;
+let _power = 60;
 let strafe = false;
 let autodrive = false;
 let captureMode = false;
 let driveMode = false;
+const joyMin = 0.4
 
-let prevJoyData = { x: 0, y: 0, strafe: strafe };
-let joyData = { x: 0, y: 0, strafe: strafe };
+let prevJoyData = { x: 0, y: 0, strafe: strafe, power: _power / 100.0 };
+let joyData = { x: 0, y: 0, strafe: strafe, power: _power / 100.0 };
 
 const post = (url, data, callback = null) => {
     payload = JSON.stringify(data);
@@ -36,7 +36,7 @@ const get = (url, callback = null) => {
 
 const displayToggleButton = (id, state, label) => {
     $(`#${id}`).css("background-color", state ? "green" : "#222222");
-    
+
     $(`#${id}`).text(`${label}: ${state ? "ON" : "OFF"}`);
 }
 
@@ -58,13 +58,17 @@ const createSnapshot = (label) => {
 }
 
 const applyJoyData = () => {
+
+
+
     if (JSON.stringify(joyData) === JSON.stringify(prevJoyData)) {
-       if(!(joyData.x == 0 && joyData.y == 0)) {
-              return;
-       }
+        if (!(joyData.x == 0 && joyData.y == 0)) {
+            return;
+        }
     }
-    prevJoyData = {...joyData}
-    post("api/joystick", joyData, (data) => {
+    prevJoyData = { ...joyData }
+
+    post("api/joystick", { ...joyData }, (data) => {
         console.log(data);
     });
 }
@@ -73,15 +77,26 @@ const stop = () => {
     applyJoyData();
 }
 
+const dir_v = (v) => v < 0 ? -1 : 1;
+
 const handleJoystick = (joyNum, stickData) => {
-    strafe = (joyNum === 2)
-    joyData = { x: parseFloat(stickData.x) / 100.0, y: parseFloat(stickData.y) / 100.0, strafe: strafe }
+    strafe = (joyNum === 2);
+    let x = (parseFloat(stickData.x) / 100.0);
+    let y = (parseFloat(stickData.y) / 100.0);
+    let power = _power / 100.0
+    /*
+    if( x !== 0)
+        x = (Math.abs(x) * (1.0-joyMin) + joyMin)*dir_v(x);
+    if (y !== 0)
+        y = (Math.abs(y) * (1.0-joyMin) + joyMin)*dir_v(y);
+    */
+
+    joyData = { x, y, strafe, power }
     applyJoyData();
 }
 
 const handleUpdatePower = (value) => {
-    power = value;
-    console.log(power);
+    _power = value;
 }
 
 const captureButtons = [
@@ -94,21 +109,20 @@ const joy1 = new JoyStick('joy1', {
     "title": "joy1",
     internalFillColor: "#656565",
     externalStrokeColor: "#999999",
-}, (d) => handleJoystick(1,d));
+}, (d) => handleJoystick(1, d));
 
 const joy2 = new JoyStick('joy2', {
     "title": "joy2",
     internalFillColor: "#656565",
     externalStrokeColor: "#999999",
-}, (d) => handleJoystick(2,d));
-
+}, (d) => handleJoystick(2, d));
 
 const handleControlPanelChange = (value) => {
     console.log(value);
     prevJoyData = { x: 0, y: 0, strafe: strafe };
     joyData = value.value;
-    joyData.x *= (power / 100.0);
-    joyData.y *= (power / 100.0);
+    joyData.x *= (_power / 100.0);
+    joyData.y *= (_power / 100.0);
     applyJoyData();
 }
 
@@ -127,9 +141,9 @@ const handleControlPanelChange2 = (value) => {
             break;
     }
 
-    
-    joy.x *= (power / 100.0);
-    joy.y *= (power / 100.0);
+
+    joy.x *= (_power / 100.0);
+    joy.y *= (_power / 100.0);
 
     console.log(joy);
 
@@ -137,13 +151,15 @@ const handleControlPanelChange2 = (value) => {
         console.log("received:")
         console.log(data);
     });
-   
+
 }
+
 /*
 const controlPanel = new ControlPanel(
     id="controlPanel",
     {onChange: handleControlPanelChange}
 );
+*/
 
 const powerSlider = new Slider(
     "powerSlider",
@@ -151,15 +167,15 @@ const powerSlider = new Slider(
         min: 0,
         max: 100,
         step: 5,
-        defaultValue: power,
+        defaultValue: _power,
         title: "Power",
         name: "power",
         vertical: true,
         onChange: handleUpdatePower
     }
 );
-*/
-const displayCoordinates = (x,y,w,h) => {
+
+const displayCoordinates = (x, y, w, h) => {
     $('#coordinatesDisplay').text(`x: ${x} y: ${y} w:${w} h:${h}`);
 }
 
@@ -175,7 +191,7 @@ const handleNavImageClick = (event) => {
     cmd = { x, y, w, h };
 
     if (captureMode || driveMode) {
-        request = { x,y,w,h };
+        request = { x, y, w, h };
         post("api/navigate", request, (data) => {
             console.log(data);
         });
@@ -199,7 +215,7 @@ $(function () {
     $("#btnAutoDrive").on("click", () => {
         autodrive = !autodrive;
         displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
-        post("api/autodrive", { })
+        post("api/autodrive", {})
     })
     $("#btnAutoNav").on("click", () => {
         driveMode = !driveMode;
@@ -222,7 +238,7 @@ $(function () {
     displayToggleButton("btnCapture", captureMode, "Capture");
     displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
     displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
-    displayCoordinates("-","-","-","-");
+    displayCoordinates("-", "-", "-", "-");
 
 });
 

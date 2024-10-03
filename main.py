@@ -8,7 +8,6 @@ from blinker import NamedSignal
 from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
-from nano_llm.utils import ArgParser
 from felix.agents.video_agent import VideoStream
 
 from felix.nodes import (
@@ -16,7 +15,7 @@ from felix.nodes import (
     Robot,
 )
 
-from felix.nodes.controller import  NavRequest
+from felix.nodes.controller import NavRequest
 from felix.signals import (
     sig_joystick,
     sig_nav_target,
@@ -48,10 +47,13 @@ joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
 
 if settings.TRAINING.mode == "ternary":
     from felix.nodes.autodriver import TernaryObstacleAvoider
+
     autodrive = TernaryObstacleAvoider()
 else:
     from felix.nodes.autodriver import BinaryObstacleAvoider
+
     autodrive = BinaryObstacleAvoider()
+
 
 def _send(signal: NamedSignal, payload):
     signal.send("robot", payload=payload)
@@ -160,6 +162,7 @@ def chat():
 
 """
 
+
 def start_flask():
     app.run(host="0.0.0.0", port=80, debug=False)
 
@@ -168,15 +171,12 @@ def start_video():
     # args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
     VideoStream(log=False).run()
 
+
 async def main():
-    await asyncio.gather(
-        controller.spin(),
-        autodrive.spin(20)
-    )
+    await asyncio.gather(controller.spin(), autodrive.spin(20))
 
 
 if __name__ == "__main__":
-   
     flask_thread = threading.Thread(target=start_flask)
     flask_thread.daemon = True
     flask_thread.start()

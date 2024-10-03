@@ -7,17 +7,28 @@ from lib.log import logger
 import math
 
 class JoystickRequest:
-    def __init__(self, x: any, y: any, strafe: any):
+    def __init__(self, x: any = 0, y: any = 0, strafe: any = 0, power: any = 1.0):
         self.x = float(x)
         self.y = float(y)
         self.strafe = bool(strafe)
+        self.power = float(power)
+        if self.power > 1:
+            self.power = self.power / 100.0
+
+    @property
+    def x_adj(self):
+        return self.x * self.power
+    
+    @property
+    def y_adj(self):
+        return self.y * self.power
 
     @classmethod
     def model_validate(cls, data):
         return JoystickRequest(**data)
     
     def __repr__(self):
-        return f"JoystickRequest(x={self.x}, y={self.y}, strafe={self.strafe})"
+        return f"JoystickRequest(x={self.x}, y={self.y}, strafe={self.strafe}, power={self.power})"
     
 class JoystickNonLinearDampener:
     def __init__(self, curve_factor=0.5):
@@ -64,16 +75,17 @@ class Joystick:
         sig_joystick.connect(self.handle_joystick)
         logger.info("*\tJoystick Initialized")
 
-    def get_twist(self, joy_x, joy_y, strafe: bool = False) -> Twist:
+    def get_twist(self, request: JoystickRequest) -> Twist:
         t = Twist()
 
-        _joy_x, _joy_y = self.dampener.apply(joy_x, joy_y)
+        _joy_x, _joy_y = self.dampener.apply(request.x_adj, request.y_adj)
 
-        if strafe:
+        if request.strafe:
             vel = np.array([_joy_y, -_joy_x, 0])
         else:
             vel = np.array([_joy_y, 0, -_joy_x])
- # x left right, y is forwrad backward for joystick
+
+        # x left right, y is forwrad backward for joystick
         scaler = settings.VEHICLE.velocity_scaler
 
         t.linear.x, t.linear.y, t.angular.z = np.vectorize(dampen)(vel)*scaler
@@ -83,4 +95,4 @@ class Joystick:
 
     def handle_joystick(self, sender, payload: JoystickRequest):
         logger.info(f"Joystick signal received from {sender}: {payload}")
-        sig_cmd_vel.send("robot", payload=self.get_twist(payload.x, payload.y, payload.strafe))
+        sig_cmd_vel.send("robot", payload=self.get_twist(payload))
