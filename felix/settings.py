@@ -100,6 +100,8 @@ class AppSettings:
 
         self.ROBOT: str = _ROBOT
 
+        self.USE_RESNET50 = True
+
     
     def load_config(self, config_file) -> Dict:
         with open(config_file,'r') as f:

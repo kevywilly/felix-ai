@@ -169,7 +169,7 @@ def start_flask():
 
 def start_video():
     # args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
-    VideoStream(log=False).run()
+    VideoStream().run()
 
 
 async def main():

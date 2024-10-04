@@ -11,8 +11,20 @@ from felix.vision.image import ImageUtils
 import os
 from lib.log import logger
 from felix.signals import sig_raw_image, sig_stop, sig_autodrive, sig_cmd_vel
+from enum import Enum
 
 torch.hub.set_dir(settings.TRAINING.model_root)
+
+use_resnet50 = settings.USE_RESNET50
+
+class Direction(str,Enum):
+    NA="NA"
+    FORWARD="FORWARD"
+    LEFT="LEFT"
+    RIGHT="RIGHT"
+    STRAFE_LEFT="STRAFLEFT"
+    STRAFE_RIGHT="STRAFERIGHT"
+
 
 class AutoDriver(BaseNode):
 
@@ -95,8 +107,13 @@ class ObstacleAvoider(AutoDriver):
         self.num_targets = num_targets
   
         if self.model_file_exists:
-            self.model = torchvision.models.alexnet(weights=None)
-            self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, self.num_targets)
+            if use_resnet50:
+                self.model =  torchvision.models.resnet50(weights=None)
+                num_ftrs = self.model.fc.in_features
+                self.model.fc = torch.nn.Linear(num_ftrs, self.num_targets)
+            else:
+                self.model = torchvision.models.alexnet(weights=None)
+                self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, self.num_targets)
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)
 
@@ -171,7 +188,7 @@ class BinaryObstacleAvoider(ObstacleAvoider):
             cmd.angular.z = self.angular
             self.status = self.BLOCKED
         
-        print("autodrive:", cmd)
+        print(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
         return cmd
 
 class TernaryObstacleAvoider(ObstacleAvoider):

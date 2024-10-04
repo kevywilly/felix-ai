@@ -6,11 +6,12 @@ import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from torchvision.models import alexnet, AlexNet_Weights
+from torchvision.models import alexnet, AlexNet_Weights, resnet50, ResNet50_Weights
 from torchvision.datasets import ImageFolder
 
 from felix.settings import settings
 from felix.training.datasets import CustomImageFolder
+from felix.training.transformations import RandomLowLightTransform, AddGaussianNoise
 from abc import ABC, abstractmethod
 
 
@@ -19,17 +20,26 @@ if not os.path.exists(settings.TRAINING.model_root):
 
 torch.hub.set_dir(settings.TRAINING.model_root)
 
-
+use_resnet50 = settings.USE_RESNET50
 
     
 class Trainer(ABC):
-    def __init__(self, model_file, test_pct=40, epochs=30, lr=0.001, momentum=0.9):
+
+    def __init__(self, model_file, test_pct=50, epochs=50, lr=0.001, momentum=0.9):
         self.test_pct = test_pct
         self.lr = lr
         self.test_pct = test_pct
         self.epochs = epochs
         self.momentum = momentum
         self.model_file = model_file
+
+        print("-------------------------------------------")
+        print("\tLoaded Trainer")
+        print(f"\tepochs: {self.epochs}")
+        print(f"\tlr: {self.lr}")
+        print(f"\tmomentum: {self.momentum}")
+        print(f"\ttest-pct: {self.test_pct}")
+        print("-------------------------------------------")
 
     @abstractmethod
     def train(self):
@@ -58,9 +68,11 @@ class ObstacleTrainer(Trainer):
     def _get_dataset(self):
 
         items = [
+            RandomLowLightTransform(min_factor=0.3, max_factor=0.5, p=0.50),
             transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
+            transforms.RandomApply([AddGaussianNoise(0.0, 0.05, 0.08)], p=0.50),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ]
 
@@ -94,10 +106,15 @@ class ObstacleTrainer(Trainer):
 
         model_exists = os.path.isfile(self.model_file)
 
-        model = alexnet(weights=AlexNet_Weights.DEFAULT)
-        model.classifier[6] = torch.nn.Linear(
-            model.classifier[6].in_features, self.num_categories
-        )
+        if use_resnet50:
+            model = resnet50(weights=ResNet50_Weights.DEFAULT)
+            num_ftrs = model.fc.in_features
+            model.fc = torch.nn.Linear(num_ftrs, self.num_categories)
+        else:
+            model = alexnet(weights=AlexNet_Weights.DEFAULT)
+            model.classifier[6] = torch.nn.Linear(
+                model.classifier[6].in_features, self.num_categories
+            )
         if model_exists:
             model.load_state_dict(torch.load(self.model_file))
 
@@ -105,7 +122,7 @@ class ObstacleTrainer(Trainer):
         model = model.to(device)
 
         best_accuracy = 0.0
-        optimizer = optim.SGD(model.parameters(), lr=self.lr, momentum=self.momentum)
+        optimizer = optim.SGD(model.parameters(), lr=self.lr, momentum=self.momentum, weight_decay=1e-4)
 
         for epoch in range(self.epochs):
             for images, labels in iter(train_loader):

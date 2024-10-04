@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import logging
-
 from nano_llm import Agent
 
 from nano_llm.plugins import VideoSource, VideoOutput

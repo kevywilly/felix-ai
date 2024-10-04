@@ -18,7 +18,7 @@ peripherals:
 capture_when_driving: True
 autodrive:
   linear: 0.4
-  angular: 1.6
+  angular: 1.2
 training:
   mode: ternary
   data_root:          &root /data/felix
