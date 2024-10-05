@@ -60,6 +60,9 @@ if [ $ARCH = "aarch64" ]; then
 		--device /dev/bus/usb \
 		--device /dev/myserial \
 		--device /dev/ttyUSB0 \
+		--privileged \
+		--device /dev/i2c-0 \
+		--device /dev/i2c-1 \
 		$DATA_VOLUME $DISPLAY_DEVICE $V4L2_DEVICES \
 		"$@"
 
