@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from felix.nodes.tof_cluster import TOFMeasurement
 from lib.interfaces import Twist
 from lib.nodes.base import BaseNode
 import torch
@@ -10,12 +11,16 @@ from felix.settings import settings
 from felix.vision.image import ImageUtils
 import os
 from lib.log import logger
-from felix.signals import sig_raw_image, sig_stop, sig_autodrive, sig_cmd_vel
+from felix.signals import sig_raw_image, sig_stop, sig_autodrive, sig_cmd_vel, sig_tof
 from enum import Enum
 
 torch.hub.set_dir(settings.TRAINING.model_root)
 
 use_resnet50 = settings.USE_RESNET50
+
+TOF_LEFT = -1
+TOF_RIGHT = 1
+TOF_FORWARD = 0
 
 class Direction(str,Enum):
     NA="NA"
@@ -37,10 +42,14 @@ class AutoDriver(BaseNode):
         self.model_loaded = False
         self.is_active = False
         self.raw_image = None
+        self.tof = {}
         
         sig_raw_image.connect(self._on_raw_image)
         sig_autodrive.connect(self._on_autodrive)
         sig_stop.connect(self._on_stop)
+
+    def _on_tof(self, sender, payload: TOFMeasurement):
+        self.tof[payload.sensor_id] = payload.range
 
     def _on_raw_image(self, sender, payload):
         self.raw_image = payload
@@ -60,6 +69,21 @@ class AutoDriver(BaseNode):
     @property
     def model_file_exists(self) -> bool:
         return os.path.isfile(self.model_file)
+    
+    @property
+    def tof_prediction(self):
+        left = self.tof.get(0)
+        right = self.tof.get(1)
+        if left > 200 and right > 200:
+            return TOF_FORWARD
+        elif left < right:
+            return TOF_RIGHT
+        else:
+            return TOF_LEFT
+    
+    @property
+    def blocked_right(self):
+        return self.tof.get(1) < 200
     
     def spinner(self):
         if self.is_active and self.raw_image is not None:
@@ -218,15 +242,16 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         left = float(predictions[self.LEFT])
         right = float(predictions[self.RIGHT])
 
-        if forward > 0.5:
+ 
+        if forward > 0.5 and self.tof_prediction == TOF_FORWARD:
             cmd.linear.x = self.linear
             cmd.angular.z = 0.0
             self.status = self.FORWARD
-        elif left > 0.5 and self.status != self.RIGHT:
+        elif (left > 0.5 or self.tof_prediction == TOF_LEFT) and self.status != self.RIGHT:
             cmd.linear.x = 0.0
             cmd.angular.z = self.angular
             self.status = self.LEFT
-        elif right > 0.5 and self.status != self.LEFT:
+        elif (right > 0.5 or self.tof_prediction == TOF_RIGHT) and self.status != self.LEFT:
             cmd.linear.x = 0.0
             cmd.angular.z = -self.angular
             self.status = self.RIGHT

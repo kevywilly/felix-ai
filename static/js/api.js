@@ -4,6 +4,7 @@ const SNAPSHOT_FOLDER = 'ternary'
 let snapshots = { forward: 0, left: 0, right: 0 };
 let _power = 60;
 let strafe = false;
+let lockXY = false;
 let autodrive = false;
 let captureMode = false;
 let driveMode = false;
@@ -59,8 +60,6 @@ const createSnapshot = (label) => {
 
 const applyJoyData = () => {
 
-
-
     if (JSON.stringify(joyData) === JSON.stringify(prevJoyData)) {
         if (!(joyData.x == 0 && joyData.y == 0)) {
             return;
@@ -79,6 +78,20 @@ const stop = () => {
 
 const dir_v = (v) => v < 0 ? -1 : 1;
 
+const applyLockXY = () => {
+    console.log(joyData)
+    
+    if(lockXY) {
+        if(Math.abs(joyData.x) > Math.abs(joyData.y)) {
+            joyData.y = 0;
+        } else {
+            joyData.x = 0;
+        }
+    }
+    console.log("apply joy data")
+    console.log(joyData)
+}
+
 const handleJoystick = (joyNum, stickData) => {
     strafe = (joyNum === 2);
     let x = (parseFloat(stickData.x) / 100.0);
@@ -92,6 +105,7 @@ const handleJoystick = (joyNum, stickData) => {
     */
 
     joyData = { x, y, strafe, power }
+    applyLockXY();
     applyJoyData();
 }
 
@@ -117,49 +131,6 @@ const joy2 = new JoyStick('joy2', {
     externalStrokeColor: "#999999",
 }, (d) => handleJoystick(2, d));
 
-const handleControlPanelChange = (value) => {
-    console.log(value);
-    prevJoyData = { x: 0, y: 0, strafe: strafe };
-    joyData = value.value;
-    joyData.x *= (_power / 100.0);
-    joyData.y *= (_power / 100.0);
-    applyJoyData();
-}
-
-const handleControlPanelChange2 = (value) => {
-    let joy = { x: 0.0, y: 0.0, strafe: false }
-    switch (value) {
-        case 'LEFT':
-            joy.x = -1.0;
-            joy.strafe = true;
-            break;
-        case 'RIGHT':
-            joy.x = 1.0;
-            joy.strafe = true;
-            break;
-        default:
-            break;
-    }
-
-
-    joy.x *= (_power / 100.0);
-    joy.y *= (_power / 100.0);
-
-    console.log(joy);
-
-    post("api/joystick", joy, (data) => {
-        console.log("received:")
-        console.log(data);
-    });
-
-}
-
-/*
-const controlPanel = new ControlPanel(
-    id="controlPanel",
-    {onChange: handleControlPanelChange}
-);
-*/
 
 const powerSlider = new Slider(
     "powerSlider",
@@ -208,22 +179,14 @@ $(function () {
         });
     }
 
-    $("#btnStrafe").on("click", () => {
-        strafe = !strafe;
-        displayToggleButton("btnStrafe", strafe, "Strafe");
+    $("#btnLockXY").on("click", () => {
+        lockXY = !lockXY;
+        displayToggleButton("btnLockXY", lockXY, "LockXY");
     })
     $("#btnAutoDrive").on("click", () => {
         autodrive = !autodrive;
         displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
         post("api/autodrive", {})
-    })
-    $("#btnAutoNav").on("click", () => {
-        driveMode = !driveMode;
-        displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
-    })
-    $("#btnCapture").on("click", () => {
-        captureMode = !captureMode;
-        displayToggleButton("btnCapture", captureMode, "Capture");
     })
 
     $("#navImage").on("dblclick", () => {
@@ -234,10 +197,10 @@ $(function () {
 
     getSnapshots()
 
-    displayToggleButton("btnStrafe", strafe, "Strafe");
-    displayToggleButton("btnCapture", captureMode, "Capture");
+    displayToggleButton("btnLockXY", lockXY, "Lock XY");
+    //displayToggleButton("btnCapture", captureMode, "Capture");
     displayToggleButton("btnAutoDrive", autodrive, "Auto Drive");
-    displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
+    //displayToggleButton("btnAutoNav", driveMode, "Auto Nav");
     displayCoordinates("-", "-", "-", "-");
 
 });

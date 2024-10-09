@@ -8,7 +8,15 @@ class BaseNode(ABC):
     logger = logger
 
     def __init__(self, **kwargs):
+        """
+        Args
+        - frequency: float = 0
+        - debug: bool = False
+        """
+
         self.frequency = kwargs.get('frequency', 10)
+        self.debug: bool = kwargs.get('debug', False)
+
         atexit.register(self._shutdown)
 
     def loaded(self):

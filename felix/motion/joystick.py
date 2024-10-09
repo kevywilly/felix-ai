@@ -52,7 +52,7 @@ class JoystickNonLinearDampener:
 
         # Optional smoothing using previous values (low-pass filter) for extra smoothness
         smoothed_x = 0.0 if input_x == 0 else (0.9 * dampened_x) + (0.1 * self.prev_x)
-        smoothed_y = 0.0 if input_x == 0 else (0.9 * dampened_y) + (0.1 * self.prev_y)
+        smoothed_y = 0.0 if input_y == 0 else (0.9 * dampened_y) + (0.1 * self.prev_y)
 
         # Store the smoothed values for the next frame
         self.prev_x = smoothed_x

@@ -54,15 +54,17 @@ if [ $ARCH = "aarch64" ]; then
 		--volume /etc/enctune.conf:/etc/enctune.conf \
 		--volume /etc/nv_tegra_release:/etc/nv_tegra_release \
 		--volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
+		--device /dev/gpiochip0 \
+		--device /dev/gpiochip1 \
 		--volume ${HOME}/projects/felix-ai:/felix-ai \
 		--volume ${HOME}/data:/data \
 		--device /dev/snd \
 		--device /dev/bus/usb \
 		--device /dev/myserial \
 		--device /dev/ttyUSB0 \
-		--privileged \
-		--device /dev/i2c-0 \
 		--device /dev/i2c-1 \
+		--device /dev/i2c-2 \
+		--device /dev/i2c-7 \
 		$DATA_VOLUME $DISPLAY_DEVICE $V4L2_DEVICES \
 		"$@"
 
