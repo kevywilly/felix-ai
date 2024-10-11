@@ -16,7 +16,7 @@ from felix.nodes import (
 )
 
 from felix.nodes.controller import NavRequest
-#from felix.nodes.tof_cluster import TOFCluster
+from felix.nodes.tof_cluster import TOFCluster
 from felix.signals import (
     sig_joystick,
     sig_nav_target,
@@ -45,7 +45,7 @@ robot = Robot()
 
 controller = Controller(frequency=30)
 joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
-#tof = TOFCluster(debug=True)
+tof = TOFCluster(debug=False)
 
 if settings.TRAINING.mode == "ternary":
     from felix.nodes.autodriver import TernaryObstacleAvoider
@@ -166,7 +166,7 @@ def chat():
 
 
 def start_flask():
-    app.run(host="0.0.0.0", port=80, debug=True)
+    app.run(host="0.0.0.0", port=80, debug=False)
 
 
 def start_video():
@@ -178,7 +178,7 @@ async def main():
     await asyncio.gather(
         controller.spin(), 
         autodrive.spin(20), 
-        # tof.spin(10)
+        tof.spin(10)
     )
 
 

@@ -47,8 +47,10 @@ class AutoDriver(BaseNode):
         sig_raw_image.connect(self._on_raw_image)
         sig_autodrive.connect(self._on_autodrive)
         sig_stop.connect(self._on_stop)
+        sig_tof.connect(self._on_tof)
 
     def _on_tof(self, sender, payload: Measurement):
+        print(f"tof: {payload.value}")
         self.tof[payload.id] = payload.value
 
     def _on_raw_image(self, sender, payload):
@@ -241,8 +243,12 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         forward = float(predictions[self.FORWARD])
         left = float(predictions[self.LEFT])
         right = float(predictions[self.RIGHT])
+        
 
- 
+        print("---------------------------------------------")
+        print(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
+        print("---------------------------------------------")
+
         if forward > 0.5 and self.tof_prediction == TOF_FORWARD:
             cmd.linear.x = self.linear
             cmd.angular.z = 0.0
