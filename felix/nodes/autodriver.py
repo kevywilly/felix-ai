@@ -1,6 +1,6 @@
 from abc import abstractmethod
-from felix.nodes.tof_cluster import TOFMeasurement
-from lib.interfaces import Twist
+
+from lib.interfaces import Measurement, Twist
 from lib.nodes.base import BaseNode
 import torch
 import torchvision
@@ -48,8 +48,8 @@ class AutoDriver(BaseNode):
         sig_autodrive.connect(self._on_autodrive)
         sig_stop.connect(self._on_stop)
 
-    def _on_tof(self, sender, payload: TOFMeasurement):
-        self.tof[payload.sensor_id] = payload.range
+    def _on_tof(self, sender, payload: Measurement):
+        self.tof[payload.id] = payload.value
 
     def _on_raw_image(self, sender, payload):
         self.raw_image = payload
@@ -83,7 +83,7 @@ class AutoDriver(BaseNode):
     
     @property
     def blocked_right(self):
-        return self.tof.get(1) < 200
+        return self.tof.get(1) < settings.TOF_THRESHOLD
     
     def spinner(self):
         if self.is_active and self.raw_image is not None:

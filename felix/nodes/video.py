@@ -2,7 +2,7 @@ from enum import Enum
 from lib.nodes import BaseNode
 from felix.signals import sig_raw_image, sig_image_tensor
 from nano_llm.plugins import VideoSource
-from jetson.utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
+from jetson_utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
 
 import cv2
 

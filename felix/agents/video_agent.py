@@ -3,7 +3,7 @@ from nano_llm import Agent
 
 from nano_llm.plugins import VideoSource, VideoOutput
 from nano_llm.utils import ArgParser
-from jetson.utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
+from jetson_utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
 from felix.signals import sig_raw_image
 import cv2
 

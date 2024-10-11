@@ -5,6 +5,14 @@ from numpy import ndarray
 import time
 
 
+class Measurement:
+    def __init__(self, id: int, value: any):
+        self.id = id
+        self.value = value
+
+    def __repr__(self):
+        return f"tof: {self.id} range: {self.value}"
+
 class DataModel(ABC):
     @property
     def numpy(self) -> ndarray:

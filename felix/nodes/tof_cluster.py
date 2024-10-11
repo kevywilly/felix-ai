@@ -4,18 +4,11 @@ import time
 import board
 from digitalio import DigitalInOut
 from adafruit_vl53l0x import VL53L0X
+from lib.interfaces import Measurement
 from lib.nodes.base import BaseNode
 from felix.signals import sig_tof
 
 i2c = board.I2C()
-
-class TOFMeasurement:
-    def __init__(self, sensor_id: int, range: int):
-        self.sensor_id = sensor_id
-        self.range = range
-
-    def __repr__(self):
-        return f"tof: {self.sensor_id} range: {self.range}"
 
 def fancy_print(title: str, items: list[str] = []):
     print("------------------------------------")
@@ -24,6 +17,16 @@ def fancy_print(title: str, items: list[str] = []):
 
     for item in items:
         print(f"\t- {item}")
+
+def _get_sensor_instance(index: int) -> VL53L0X:
+    try:
+        sensor = VL53L0X(i2c, io_timeout_s = 0.5)
+            # also performs VL53L0X hardware check
+    except RuntimeError:
+        print(f"failed to initialize tof {index} trying again in 1 second.")
+        time.sleep(1)
+        sensor = VL53L0X(i2c, io_timeout_s = 0.5)
+    return sensor
 
 def init_sensors() -> list[VL53L0X]:
 
@@ -52,7 +55,8 @@ def init_sensors() -> list[VL53L0X]:
         power_pin.value = True
         time.sleep(0.02)
         # instantiate the VL53L0X sensor on the I2C bus & insert it into the "vl53" list
-        vl53.insert(i, VL53L0X(i2c, io_timeout_s = 0.5))  # also performs VL53L0X hardware check
+
+        vl53.insert(i, _get_sensor_instance(i))
 
         # vl53[i].measurement_timing_budget = 2000000
 
@@ -82,7 +86,7 @@ class TOFCluster(BaseNode):
 
     def detect_range(self):
         for index, sensor in enumerate(self.sensors):
-            m = TOFMeasurement(index, sensor.range)
+            m = Measurement(index, sensor.range)
             sig_tof.send("tof", payload=m)
             if self.debug:
                 print(m)
