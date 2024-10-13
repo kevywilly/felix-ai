@@ -50,7 +50,6 @@ class AutoDriver(BaseNode):
         sig_tof.connect(self._on_tof)
 
     def _on_tof(self, sender, payload: Measurement):
-        print(f"tof: {payload.value}")
         self.tof[payload.id] = payload.value
 
     def _on_raw_image(self, sender, payload):
@@ -219,7 +218,7 @@ class BinaryObstacleAvoider(ObstacleAvoider):
 
 class TernaryObstacleAvoider(ObstacleAvoider):
 
-    NA = -1
+
     FORWARD = 0
     LEFT = 1
     RIGHT = 2
@@ -229,39 +228,46 @@ class TernaryObstacleAvoider(ObstacleAvoider):
             model_file=settings.TRAINING.training_model_path,
             num_targets=3,
         )
-        self.status = self.NA
         
     def predict(self, input) -> Twist:
-
         cmd = Twist()
 
         predictions = self.get_predictions(input)
 
         if predictions is None:
+            print("autodriver failed to get predictions, stopping.")
             return cmd
         
         forward = float(predictions[self.FORWARD])
         left = float(predictions[self.LEFT])
         right = float(predictions[self.RIGHT])
-        
+        tof = self.tof_prediction
 
         print("---------------------------------------------")
         print(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
         print("---------------------------------------------")
 
-        if forward > 0.5 and self.tof_prediction == TOF_FORWARD:
-            cmd.linear.x = self.linear
-            cmd.angular.z = 0.0
-            self.status = self.FORWARD
-        elif (left > 0.5 or self.tof_prediction == TOF_LEFT) and self.status != self.RIGHT:
+        if forward > 0.5:
+            self.current_turn = None  # Reset turning state whenever forward is recommended
+            cmd.linear.x = self.linear  # Set forward motion for all forward cases
+            cmd.angular.z = 0.0  # No rotation for forward or diagonal movement
+            
+            if tof == TOF_FORWARD:
+                cmd.linear.y = 0.0
+            elif tof == TOF_RIGHT:
+                cmd.linear.y = -self.linear*3/4# Move diagonally forward-right
+                cmd.linear.x = self.linear/2
+            elif tof == TOF_LEFT:
+                cmd.linear.y = self.linear*3/4  # Move diagonally forward-left
+                cmd.linear.x = self.linear/2
+        else:
             cmd.linear.x = 0.0
-            cmd.angular.z = self.angular
-            self.status = self.LEFT
-        elif (right > 0.5 or self.tof_prediction == TOF_RIGHT) and self.status != self.LEFT:
-            cmd.linear.x = 0.0
-            cmd.angular.z = -self.angular
-            self.status = self.RIGHT
-        
+            cmd.linear.y = 0.0  # Ensure no lateral movement during turns
+            if self.current_turn is None:
+                self.current_turn = "left" if left > right else "right"
+            
+            cmd.angular.z = self.angular if self.current_turn == "left" else -self.angular
+
         print("autodrive:", cmd)
         return cmd
             
