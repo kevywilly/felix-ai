@@ -20,12 +20,12 @@ def fancy_print(title: str, items: list[str] = []):
 
 def _get_sensor_instance(index: int) -> VL53L0X:
     try:
-        sensor = VL53L0X(i2c, io_timeout_s = 0.5)
+        sensor = VL53L0X(i2c, io_timeout_s = 1)
             # also performs VL53L0X hardware check
     except RuntimeError:
-        print(f"failed to initialize tof {index} trying again in 1 second.")
-        time.sleep(1)
-        sensor = VL53L0X(i2c, io_timeout_s = 0.5)
+        print(f"failed to initialize tof {index} trying again in 2 seconds.")
+        time.sleep(2)
+        sensor = VL53L0X(i2c, io_timeout_s = 1)
     return sensor
 
 def init_sensors() -> list[VL53L0X]:
@@ -102,7 +102,7 @@ class TOFCluster(BaseNode):
                 sensor.stop_continuous()
         finally:
             i2c.deinit()
-            GPIO.cleanup()
+            
 
         
 if __name__ == "__main__":

@@ -18,10 +18,6 @@ torch.hub.set_dir(settings.TRAINING.model_root)
 
 use_resnet50 = settings.USE_RESNET50
 
-TOF_LEFT = -1
-TOF_RIGHT = 1
-TOF_FORWARD = 0
-
 class Direction(str,Enum):
     NA="NA"
     FORWARD="FORWARD"
@@ -63,7 +59,7 @@ class AutoDriver(BaseNode):
         logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
-        logger.info("Stop signal received")
+        logger.info("Stop signal received, deactivating autodrive.")
         self.is_active = False
         logger.info(f"AutoDrive is_active: {self.is_active}")
 
@@ -76,11 +72,11 @@ class AutoDriver(BaseNode):
         left = self.tof.get(0)
         right = self.tof.get(1)
         if left > 200 and right > 200:
-            return TOF_FORWARD
+            return Direction.FORWARD
         elif left < right:
-            return TOF_RIGHT
+            return Direction.RIGHT
         else:
-            return TOF_LEFT
+            return Direction.LEFT
     
     @property
     def blocked_right(self):
@@ -92,7 +88,8 @@ class AutoDriver(BaseNode):
                 cmd = self.predict(self.raw_image)
                 logger.info(f"AutoDrive: {cmd}")
                 sig_cmd_vel.send("autodrive", payload=cmd)
-            except:  # noqa: E722
+            except Exception as ex:  # noqa: E722
+                logger.info(f"Autodrive error: {ex}. Stopping")
                 sig_cmd_vel.send("autodrive", payload=Twist())
                 sig_stop.send("autodrive")
             
@@ -217,17 +214,17 @@ class BinaryObstacleAvoider(ObstacleAvoider):
         return cmd
 
 class TernaryObstacleAvoider(ObstacleAvoider):
-
-
-    FORWARD = 0
-    LEFT = 1
-    RIGHT = 2
+    # indexes for predictions
+    _forward = 0
+    _left = 1
+    _right = 2
 
     def __init__(self):
         super().__init__(
             model_file=settings.TRAINING.training_model_path,
             num_targets=3,
         )
+        self.direction = Direction.FORWARD
         
     def predict(self, input) -> Twist:
         cmd = Twist()
@@ -238,9 +235,10 @@ class TernaryObstacleAvoider(ObstacleAvoider):
             print("autodriver failed to get predictions, stopping.")
             return cmd
         
-        forward = float(predictions[self.FORWARD])
-        left = float(predictions[self.LEFT])
-        right = float(predictions[self.RIGHT])
+        forward = float(predictions[self._forward])
+        left = float(predictions[self._left])
+        right = float(predictions[self._right])
+        
         tof = self.tof_prediction
 
         print("---------------------------------------------")
@@ -248,28 +246,23 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         print("---------------------------------------------")
 
         if forward > 0.5:
-            self.current_turn = None  # Reset turning state whenever forward is recommended
-            cmd.linear.x = self.linear  # Set forward motion for all forward cases
-            cmd.angular.z = 0.0  # No rotation for forward or diagonal movement
-            
-            if tof == TOF_FORWARD:
-                cmd.linear.y = 0.0
-            elif tof == TOF_RIGHT:
-                cmd.linear.y = -self.linear*3/4# Move diagonally forward-right
-                cmd.linear.x = self.linear/2
-            elif tof == TOF_LEFT:
-                cmd.linear.y = self.linear*3/4  # Move diagonally forward-left
-                cmd.linear.x = self.linear/2
+            self.direction = Direction.FORWARD
+            cmd.angular.z = 0.0
+            cmd.linear.y = 0.0
+            if tof == Direction.FORWARD:
+                cmd.linear.x = self.linear  # Set forward motion for all forward cases
+            else:
+                cmd.linear.x = self.linear*3/4
+                cmd.linear.y = self.linear*(3/4 if tof == Direction.LEFT else -3/4)
         else:
             cmd.linear.x = 0.0
-            cmd.linear.y = 0.0  # Ensure no lateral movement during turns
-            if self.current_turn is None:
-                self.current_turn = "left" if left > right else "right"
-            
-            cmd.angular.z = self.angular if self.current_turn == "left" else -self.angular
+            cmd.linear.y = 0.0
+            if self.direction is Direction.FORWARD:
+                self.direction = Direction.LEFT if left > right else Direction.RIGHT
 
+            cmd.angular.z = self.angular if self.direction == Direction.LEFT else -self.angular
+        
         print("autodrive:", cmd)
         return cmd
-            
         
 

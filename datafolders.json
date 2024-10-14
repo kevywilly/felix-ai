@@ -1,0 +1,17 @@
+[
+   {
+    "datasource_id" : "1",
+    "folder_id": "1",
+    "folder_name": "My Folder",
+    "recursive": true,
+    "metadata": {
+        "project_id": "1234"
+    }
+   },
+   {
+    "datasource_id" : "2",
+    "folder_id": "2",
+    "folder_name": "/",
+    "recursive": true,
+   }
+]

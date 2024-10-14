@@ -6,7 +6,7 @@ from nano_llm.utils import ArgParser
 from jetson_utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
 from felix.signals import sig_raw_image
 import cv2
-
+import atexit
 class VideoStream(Agent):
     """
     Relay, view, or test a video stream.  Use the ``--video-input`` and ``--video-output`` arguments
@@ -38,6 +38,7 @@ class VideoStream(Agent):
           video_output (Plugin|str): the VideoOutput plugin instance, or output stream URL / device ID.
         """
         super().__init__()
+        
 
         self.image_tensor = None
         self.image = None
@@ -54,6 +55,7 @@ class VideoStream(Agent):
         self.video_source.add(self.video_output)
         
         self.pipeline = [self.video_source]
+
         
     def on_video(self, image):
         # print(f"captured {image.width}x{image.height} frame from {self.video_source.resource}")
@@ -71,6 +73,9 @@ class VideoStream(Agent):
     
         sig_raw_image.send(self, payload=self.image)
 
+    def shutdown(self):
+        if self.video_source:
+            del self.video_source
          
 if __name__ == "__main__":
     parser = ArgParser(extras=['video_input', 'video_output', 'log'])
@@ -78,11 +83,11 @@ if __name__ == "__main__":
     print(args)
     
     args = {
-        'video_input': 'csi://0', 
+        'video_input': '/dev/video0', 
         'video_output': 'webrtc://@:8554/output', 
         'log_level': "info"
     }
     
     #agent = VideoStream(**args).run()
   
-    agent = VideoStream(**vars(args)).run() 
+    agent = VideoStream().run() 

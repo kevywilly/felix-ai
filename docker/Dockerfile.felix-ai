@@ -12,6 +12,7 @@ WORKDIR /
 
 COPY ./scripts/entrypoint.sh /
 COPY ./scripts/felix.sh /
+COPY ./scripts/train.sh /
 
 RUN apt-get update && apt-get -y install vim i2c-tools\
    && rm -rf /var/lib/apt/lists/*

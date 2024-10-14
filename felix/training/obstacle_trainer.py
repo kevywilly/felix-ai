@@ -48,7 +48,13 @@ class Trainer(ABC):
 
 class ObstacleTrainer(Trainer):
     def __init__(
-        self, images_path, random_flip: bool = False, target_flips=None, *args, **kwargs
+        self, 
+        images_path, 
+        random_flip: bool = False, 
+        target_flips=None, 
+        pct_low_light=0.2,
+        pct_noise=0.2,
+        *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.images_path = images_path
@@ -56,6 +62,8 @@ class ObstacleTrainer(Trainer):
         self.num_categories = len(self.categories)
         self.random_flip = random_flip
         self.target_flips = target_flips
+        self.pct_low_light = pct_low_light
+        self.pct_noise = pct_noise
 
         print("---------------------------------------------------")
         print("\tObstacleTrainer")
@@ -68,11 +76,11 @@ class ObstacleTrainer(Trainer):
     def _get_dataset(self):
 
         items = [
-            RandomLowLightTransform(min_factor=0.3, max_factor=0.5, p=0.50),
+            RandomLowLightTransform(min_factor=0.3, max_factor=0.5, p=self.pct_low_light),
             transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.RandomApply([AddGaussianNoise(0.0, 0.05, 0.08)], p=0.50),
+            transforms.RandomApply([AddGaussianNoise(0.0, 0.05, 0.08)], p=self.pct_noise),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ]
 
