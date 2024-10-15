@@ -143,14 +143,15 @@ class ObstacleAvoider(AutoDriver):
 
     def _print_status(self):
 
-        print("-------------------------------------------------------------------")
-        print(f"\t-- model file: {self.model_file}")
-        print(f"\t-- model exists: {self.model_file_exists}")
-        print(f"\t-- model loaded: {self.model_loaded}")
-        print(f"\t-- targets: {self.num_targets}")
-        print(f"\t-- linear: {self.linear}")
-        print(f"\t-- angular: {self.angular}")
-        print("--------------------------------------------------------------------")
+        logger.pretty(
+            "autodriver", 
+            f"model file: {self.model_file}",
+            f"model exists: {self.model_file_exists}",
+            f"model loaded: {self.model_loaded}",
+            f"targets: {self.num_targets}",
+            f"linear: {self.linear}",
+            f"angular: {self.angular}"
+        )
 
     def preprocess(self, sensor_image):
         x = ImageUtils.bgr8_to_rgb8(sensor_image)
@@ -194,12 +195,11 @@ class BinaryObstacleAvoider(ObstacleAvoider):
         predictions = self.get_predictions(input)
 
         if predictions is None:
-            print("No predictions")
+            logger.info("No predictions")
             return cmd
         
         forward = float(predictions[self.FORWARD])
         blocked = float(predictions[self.BLOCKED])
-        print(predictions)
 
         if forward > 0.5:
             cmd.linear.x = self.linear
@@ -210,7 +210,7 @@ class BinaryObstacleAvoider(ObstacleAvoider):
             cmd.angular.z = self.angular
             self.status = self.BLOCKED
         
-        print(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
+        logger.pretty(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
         return cmd
 
 class TernaryObstacleAvoider(ObstacleAvoider):
@@ -241,9 +241,8 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         
         tof = self.tof_prediction
 
-        print("---------------------------------------------")
-        print(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
-        print("---------------------------------------------")
+
+        logger.pretty(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
 
         if forward > 0.5:
             self.direction = Direction.FORWARD

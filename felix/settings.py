@@ -3,9 +3,8 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict
 from lib.vehicles import MecanumVehicle, DifferentialDriveVehicle
-from felix.utils.format import comment_block
 from felix.vision.sensors import CameraSensor
-
+from lib.log import logger
 import yaml
 
 ## define custom tag handler
@@ -18,7 +17,7 @@ yaml.add_constructor('!join', join)
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
 
 _ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixV2'
-print(comment_block(f'Robot = {_ROBOT}'))
+logger.pretty(f'Robot = {_ROBOT}')
 
 if not(_ROBOT):
     raise Exception("Environment variable ROBOT not set, use either ROBOT=felixV1 or ROBOT=felixV2")
@@ -50,8 +49,7 @@ class AppSettings:
 
 
     def __init__(self, config_file):
-
-        print(comment_block('Loading App Settings'))
+        logger.pretty("Loading App Settings")
     
         config = self.load_config(config_file)
 

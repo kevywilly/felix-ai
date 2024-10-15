@@ -5,6 +5,7 @@ import os
 import argparse
 from datetime import datetime
 from felix.utils.file import move_file_with_timestamp
+from lib.log import logger
 
 if __name__ == "__main__":
 
@@ -23,12 +24,7 @@ if __name__ == "__main__":
     iterations = args.iterations
     start_clean = args.start_clean
 
-    print("-------------------------------------------")
-    print("Starting trainer with args")
-    print("-------------------------------------------")
-    print(args)
-    print("-------------------------------------------")
-    
+    logger.pretty("Starting trainer with args", **vars(args))
 
     if settings.TRAINING.mode == "ternary":
         target_flips = [0, 2, 1]
@@ -49,7 +45,5 @@ if __name__ == "__main__":
     )
 
     for i in range(iterations):
-        print("----------------------------------------------------------")
-        print(f"\tIteration {i+1} of {iterations}")
-        print("----------------------------------------------------------")
+        logger.pretty(f"Iteration {i+1} of {iterations}")
         trainer.train()

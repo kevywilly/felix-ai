@@ -6,17 +6,13 @@ from digitalio import DigitalInOut
 from adafruit_vl53l0x import VL53L0X
 from lib.interfaces import Measurement
 from lib.nodes.base import BaseNode
+from lib.log import logger
 from felix.signals import sig_tof
 
 i2c = board.I2C()
 
 def fancy_print(title: str, items: list[str] = []):
-    print("------------------------------------")
-    print(title)
-    print("------------------------------------")
-
-    for item in items:
-        print(f"\t- {item}")
+    logger.pretty(title, *items)
 
 def _get_sensor_instance(index: int) -> VL53L0X:
     try:

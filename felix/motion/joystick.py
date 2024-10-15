@@ -73,7 +73,7 @@ class Joystick:
     def __init__(self, curve_factor=0.25):
         self.dampener = JoystickNonLinearDampener(curve_factor)
         sig_joystick.connect(self.handle_joystick)
-        logger.info("*\tJoystick Initialized")
+        logger.info("Joystick Initialized")
 
     def get_twist(self, request: JoystickRequest) -> Twist:
         t = Twist()
