@@ -1,5 +1,6 @@
 
 
+import os
 from nano_llm import Agent
 
 from nano_llm.plugins import VideoSource, VideoOutput
@@ -7,7 +8,7 @@ from nano_llm.utils import ArgParser
 from jetson_utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
 from felix.signals import sig_raw_image
 import cv2
-
+from felix.settings import settings
 
 class VideoStream(Agent):
     """
@@ -51,7 +52,10 @@ class VideoStream(Agent):
             video_input_framerate=video_input_framerate,
             **kwargs
         )
-        self.video_output = VideoOutput(video_output, **kwargs)
+
+        # self.video_output = VideoOutput(video_output, **kwargs)
+        self.video_output = VideoOutput("file://drive.mp4", video_output_codec="h264", **kwargs)
+        
         
         self.video_source.add(self.on_video, threaded=True)
         self.video_source.add(self.video_output)
