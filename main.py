@@ -183,13 +183,17 @@ async def main():
 
 
 if __name__ == "__main__":
-    flask_thread = threading.Thread(target=start_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
+    try:
+        flask_thread = threading.Thread(target=start_flask)
+        flask_thread.daemon = True
+        flask_thread.start()
 
-    video_thread = threading.Thread(target=start_video)
-    video_thread.daemon = True
-    video_thread.start()
+        video_thread = threading.Thread(target=start_video)
+        video_thread.daemon = True
+        video_thread.start()
 
-    asyncio.run(main())
+        asyncio.run(main())
+    finally:
+        video_thread.join()
+        flask_thread.join()
 

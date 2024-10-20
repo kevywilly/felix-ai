@@ -1,14 +1,16 @@
-
-
 import os
 from nano_llm import Agent
-
+import atexit
 from nano_llm.plugins import VideoSource, VideoOutput
 from nano_llm.utils import ArgParser
-from jetson_utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
+from jetson_utils import (
+    cudaToNumpy,
+)
 from felix.signals import sig_raw_image
 import cv2
 from felix.settings import settings
+from datetime import datetime
+
 
 class VideoStream(Agent):
     """
@@ -26,74 +28,82 @@ class VideoStream(Agent):
     
     It's also used as a basic test of video streaming before using more complex agents that rely on it.
     """
-    def __init__(self, 
-                 video_input="csi://0", 
-                 video_output="webrtc://@:8554/output", 
-                 video_input_width=1280, 
-                 video_input_height=720, 
-                 video_input_framerate=60, 
-                 **kwargs
-        ):
-        
+
+    def __init__(
+        self,
+        video_input="csi://0",
+        video_output="webrtc://@:8554/output",
+        video_input_width=1280,
+        video_input_height=720,
+        video_input_framerate=60,
+        **kwargs,
+    ):
         """
         Args:
           video_input (Plugin|str): the VideoSource plugin instance, or URL of the video stream or camera device.
           video_output (Plugin|str): the VideoOutput plugin instance, or output stream URL / device ID.
         """
         super().__init__()
-        
 
         self.image_tensor = None
         self.image = None
 
-        self.video_source = VideoSource(video_input, 
-            video_input_width=video_input_width, 
-            video_input_height=video_input_height, 
+        self.video_source = VideoSource(
+            video_input,
+            video_input_width=video_input_width,
+            video_input_height=video_input_height,
             video_input_framerate=video_input_framerate,
-            **kwargs
+            **kwargs,
         )
 
         # self.video_output = VideoOutput(video_output, **kwargs)
-        self.video_output = VideoOutput("file://drive.mp4", video_output_codec="h264", **kwargs)
-        
-        
-        self.video_source.add(self.on_video, threaded=True)
+        filename = os.path.join(
+            settings.TRAINING.data_root, "videos", f"{datetime.now().timestamp()}.mp4"
+        )
+        filename = f"file://{filename}"
+
+        self.video_output = VideoOutput(
+            video_output, video_output_codec="h264", video_output_save=filename
+        )
+
+        self.video_source.add(self.on_video, threaded=False)
         self.video_source.add(self.video_output)
-        
+
         self.pipeline = [self.video_source]
 
-        
+        atexit.register(self.shutdown)
+
     def on_video(self, image):
         # print(f"captured {image.width}x{image.height} frame from {self.video_source.resource}")
-        
+
         if image:
             self.image_tensor = image
 
             self._convert_image(image)
 
-
-    def _convert_image(self, rgb_img):        
+    def _convert_image(self, rgb_img):
         cv_image = cudaToNumpy(rgb_img)
 
         self.image = cv2.cvtColor(cv_image, cv2.COLOR_RGBA2BGR)
-    
+
         sig_raw_image.send(self, payload=self.image)
 
     def shutdown(self):
-        if self.video_source:
-            del self.video_source
-         
+        self.video_output.stop()
+        self.video_source.stop()
+
+
 if __name__ == "__main__":
-    parser = ArgParser(extras=['video_input', 'video_output', 'log'])
+    parser = ArgParser(extras=["video_input", "video_output", "log"])
     args = parser.parse_args()
     print(args)
-    
+
     args = {
-        'video_input': '/dev/video0', 
-        'video_output': 'webrtc://@:8554/output', 
-        'log_level': "info"
+        "video_input": "/dev/video0",
+        "video_output": "webrtc://@:8554/output",
+        "log_level": "info",
     }
-    
-    #agent = VideoStream(**args).run()
-  
-    agent = VideoStream().run() 
+
+    # agent = VideoStream(**args).run()
+
+    agent = VideoStream().run()
