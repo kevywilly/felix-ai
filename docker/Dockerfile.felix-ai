@@ -18,12 +18,11 @@ RUN apt-get update && apt-get -y install vim i2c-tools\
    && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
-RUN pip3 install --no-cache-dir --verbose \ 
+RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   pyserial \
   flask \
   flask_cors \
   pandas \
-  pyserial \
   asyncio-atexit \
   adafruit-blinka \
   adafruit-circuitpython-vl53l0x \
