@@ -14,19 +14,25 @@ COPY ./scripts/entrypoint.sh /
 COPY ./scripts/felix.sh /
 COPY ./scripts/train.sh /
 
-RUN apt-get update && apt-get -y install vim i2c-tools\
+RUN apt-get update && apt-get -y install vim i2c-tools libzmq3-dev libzmq5 pkg-config\
    && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
 RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   pyserial \
+  streamlit \
+  streamlit-joystick \
   flask \
   flask_cors \
   pandas \
   asyncio-atexit \
   adafruit-blinka \
   adafruit-circuitpython-vl53l0x \
-  jetson.GPIO
+  jetson.GPIO \
+  pyzmq
+  
+
+
 
 FROM stage1 as stage2
 

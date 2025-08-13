@@ -9,3 +9,6 @@ numpy
 Pillow
 pyserial
 asyncio-atexit
+streamlit
+streamlit-joystick
+pyzmq

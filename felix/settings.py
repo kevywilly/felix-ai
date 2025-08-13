@@ -1,8 +1,8 @@
 import os
 import numpy as np
 from pathlib import Path
-from typing import List, Dict
-from lib.vehicles import MecanumVehicle, DifferentialDriveVehicle
+from typing import Dict
+from lib.vehicles import MecanumVehicle
 from felix.vision.sensors import CameraSensor
 from lib.log import logger
 import yaml
