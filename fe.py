@@ -1,74 +1,36 @@
 from dataclasses import dataclass
 import time
+
 import streamlit as st
 from st_joystick import st_joystick
-import asyncio
-import threading
-import logging
-import os
-from blinker import NamedSignal
-from flask_cors import CORS
-from flask import Flask, Response, request, render_template
+from felix.bus import SimpleEventBus
 from felix.motion.joystick import Joystick, JoystickRequest
-from felix.agents.video_agent import VideoStream
+from felix.service.base import BaseService
+from felix.topics import Topics
+import logging
 
-from felix.nodes import (
-    Controller,
-    Robot,
-)
+from felix.types import Twist, Vector3 
 
-from felix.nodes.controller import NavRequest
-from felix.nodes.tof_cluster import TOFCluster
-from felix.signals import (
-    sig_joystick,
-    sig_nav_target,
-    sig_cmd_vel,
-    sig_autodrive,
-    sig_stop,
-)
-from lib.interfaces import Twist
-from felix.settings import settings
+logging.basicConfig(level=logging.DEBUG)
 
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+#if "bus" not in st.session_state:
+#    st.session_state.bus = SimpleEventBus(port=5555)
 
-# setup core components
+class Publisher(BaseService):
+    def __init__(self):
+        super().__init__("Publisher", SimpleEventBus(port=5555))
+        self.logger = logging.getLogger("Publisher")
+        self.logger.setLevel(logging.DEBUG)
 
-robot = Robot()
-# if not settings.MOCK_MODE else MockCamera()
-# chat_node = ChatNode()
-controller = Controller(frequency=30)
-joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
-tof = TOFCluster(debug=False)
+p = Publisher()
 
-if settings.TRAINING.mode == "ternary":
-    from felix.nodes.autodriver import TernaryObstacleAvoider
+p.start()
 
-    autodrive = TernaryObstacleAvoider()
-else:
-    from felix.nodes.autodriver import BinaryObstacleAvoider
+p.publish_message(Topics.CMD_VEL, Twist(linear=Vector3(x=0.0, y=0.7, z=0.0), angular=Vector3(x=0.0, y=0.0, z=0.0)).dict)
 
-    autodrive = BinaryObstacleAvoider()
-
-
-def _send(signal: NamedSignal, payload):
-    signal.send("robot", payload=payload)
-    return payload
-
-def run_async_tasks():
-    async def tasks():
-        await asyncio.gather(
-            controller.spin(),
-            autodrive.spin(20),
-            tof.spin(10)
-        )
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(tasks())
-
-def start_video():
-    # args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
-    VideoStream().run()
-
+while True:
+    time.sleep(1)
+"""
 @dataclass
 class JoystickValue:
     x: float = 0.0
@@ -86,61 +48,45 @@ class JoystickValue:
         x = pos.get('x', 0.0)
         y = pos.get('y', 0.0)
         return JoystickValue(x,y)
-
+    
+def _handle_joystick(value: JoystickValue):
+    req = JoystickRequest(x=value.x, y=value.y, strafe=value.strafe, power=value.power)
+    twist = Joystick.get_twist(req)
+    p.publish_message(Topics.CMD_VEL, twist.dict)
 
 @st.fragment
 def left_joystick():
-    value = st_joystick(options={'size': 200}, id=0) # default joystick id for the zone element = 0
-    # st.write(value)
-    print(value)
+    value = st_joystick(options={'size': 150}, id=0) # default joystick id for the zone element = 0
     if value:
         # You can access the joystick values like this
         pos = JoystickValue.from_dict(value)
         st.write(value.get("vector", {}))
+        _handle_joystick(pos)
 
 @st.fragment
 def right_joystick():
-    value = st_joystick(options={'size': 200}, id=1) #remember to set the zone element id for subsequent joysticks
-    # st.write(value)
+    value = st_joystick(options={'size': 150}, id=1) #remember to set the zone element id for subsequent joysticks
     if value:
         pos = JoystickValue.from_dict(value)
+        pos.strafe = True
         st.write(value.get("vector", {}))
+        _handle_joystick(pos)
 
-def display():
-    st.set_page_config(page_title="Robot Control", layout="wide")
+st.markdown('''
+<style>
+body {
+    overflow-y: hidden; /* Hide vertical scrollbar */
+    overflow-x: hidden; /* Hide horizontal scrollbar */
+}
+</style>
+''', unsafe_allow_html=True)
 
-    st.title("Robot Control Interface")
+st.set_page_config(page_title="Robot Control", layout="centered")
+st.components.v1.iframe("https://orin1:8554/", width=720, height=405)
 
-    st.title("Felix Video Stream")
-    st.components.v1.iframe("https://orin1:8554/", width=1280, height=720)
-    cols = st.columns(3, gap="small")
-    with cols[0]:
-        st.header("Left Joystick")
-        left_joystick()
-    with cols[1]:
-        pass
-    with cols[2]:
-        st.header("Right Joystick")
-        right_joystick()
-
-
-
-# Use Streamlit singleton to ensure only one thread per app session
-@st.cache_resource
-def get_video_thread():
-    t = threading.Thread(target=start_video, daemon=True)
-    t.start()
-    return t
-
-@st.cache_resource
-def get_async_thread():
-    t = threading.Thread(target=run_async_tasks, daemon=True)
-    t.start()
-    return t
-
-get_video_thread()
-get_async_thread()
-
-display()
-        
-
+cols = st.columns(2)
+with cols[0]:
+    left_joystick()
+with cols[1]:
+    right_joystick() 
+"""

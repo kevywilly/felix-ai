@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Dict
 from lib.vehicles import MecanumVehicle
 from felix.vision.sensors import CameraSensor
-from lib.log import logger
+import logging
 import yaml
+
+logger = logging.getLogger(__name__)
 
 ## define custom tag handler
 def join(loader, node):
@@ -17,11 +19,12 @@ yaml.add_constructor('!join', join)
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
 
 _ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixV2'
-logger.pretty(f'Robot = {_ROBOT}')
+
+logger.info(f'🤖 Robot = {_ROBOT}')
 
 if not(_ROBOT):
     raise Exception("Environment variable ROBOT not set, use either ROBOT=felixV1 or ROBOT=felixV2")
-    exit()
+
 
 class TrainingConfig:
     def __init__(self, config):
@@ -49,7 +52,6 @@ class AppSettings:
 
 
     def __init__(self, config_file):
-        logger.pretty("Loading App Settings")
     
         config = self.load_config(config_file)
 
@@ -101,6 +103,8 @@ class AppSettings:
         self.ROBOT: str = _ROBOT
 
         self.USE_RESNET50 = True
+
+        logger.info("⚙️ Loaded App Settings")
 
     
     def load_config(self, config_file) -> Dict:

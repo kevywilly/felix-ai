@@ -12,3 +12,4 @@ asyncio-atexit
 streamlit
 streamlit-joystick
 pyzmq
+click

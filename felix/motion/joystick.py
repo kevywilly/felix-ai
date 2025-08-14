@@ -2,7 +2,6 @@ from typing import Dict
 from lib.interfaces import Twist
 from felix.settings import settings
 import numpy as np
-from felix.signals import sig_cmd_vel, sig_joystick
 from lib.log import logger
 import math
 
@@ -60,25 +59,22 @@ class JoystickNonLinearDampener:
 
         return smoothed_x, smoothed_y
 
+class Joystick:
+    dampener = JoystickNonLinearDampener(0.25)
 
-def dampen(x):
+    @classmethod
+    def dampen(cls, x):
         if x > 0:
             y = (1 - math.cos(math.radians(x * 180))) / 2
         else:
             y = -(1 - math.cos(math.radians(x * 180))) / 2
 
         return math.floor(100 * y) / 100.0
-
-class Joystick:
-    def __init__(self, curve_factor=0.25):
-        self.dampener = JoystickNonLinearDampener(curve_factor)
-        sig_joystick.connect(self.handle_joystick)
-        logger.info("Joystick Initialized")
-
-    def get_twist(self, request: JoystickRequest) -> Twist:
+    @classmethod
+    def get_twist(cls, request: JoystickRequest) -> Twist:
         t = Twist()
 
-        _joy_x, _joy_y = self.dampener.apply(request.x_adj, request.y_adj)
+        _joy_x, _joy_y = cls.dampener.apply(request.x_adj, request.y_adj)
 
         if request.strafe:
             vel = np.array([_joy_y, -_joy_x, 0])
@@ -88,11 +84,7 @@ class Joystick:
         # x left right, y is forwrad backward for joystick
         scaler = settings.VEHICLE.velocity_scaler
 
-        t.linear.x, t.linear.y, t.angular.z = np.vectorize(dampen)(vel)*scaler
+        t.linear.x, t.linear.y, t.angular.z = np.vectorize(cls.dampen)(vel)*scaler
         #t.linear.x, t.linear.y, t.angular.z = (vel)*settings.VEHICLE.velocity_scaler
 
         return t 
-
-    def handle_joystick(self, sender, payload: JoystickRequest):
-        logger.info(f"Joystick signal received from {sender}: {payload}")
-        sig_cmd_vel.send("robot", payload=self.get_twist(payload))

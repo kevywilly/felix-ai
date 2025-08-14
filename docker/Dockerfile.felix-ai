@@ -29,7 +29,8 @@ RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   adafruit-blinka \
   adafruit-circuitpython-vl53l0x \
   jetson.GPIO \
-  pyzmq
+  pyzmq \
+  click \
   
 
 
