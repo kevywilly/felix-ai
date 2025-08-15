@@ -9,8 +9,8 @@ from felix.vision.image_collector import ImageCollector
 import numpy as np
 
 class RobotService(BaseService):
-    def __init__(self, event_bus: SimpleEventBus):
-        super().__init__(event_bus)
+    def __init__(self):
+        super().__init__()
 
         # initialize objects
         self.session_id = str(int(time.time()))
@@ -23,13 +23,13 @@ class RobotService(BaseService):
         self.cmd_zero = True
         self._image_collector = ImageCollector()
 
-        self.subscribe_to_topic(Topics.RAW_IMAGE, self.handle_raw_image)
+        self.subscribe_to_image(Topics.RAW_IMAGE, self.handle_raw_image)
 
         self.last_capture_time = time.time()
 
 
     def handle_raw_image(self, sender, payload: dict):
-        self.image = ImageUtils.bgr8_to_jpeg(np.array(payload.get("message"), dtype=np.uint8))
+        self.image = ImageUtils.bgr8_to_jpeg(payload.get("message"))
 
     def save_tag(self, tag):
         saved = self._image_collector.save_tag(self.get_image(), tag)

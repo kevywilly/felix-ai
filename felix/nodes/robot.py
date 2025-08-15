@@ -1,13 +1,11 @@
 import os
-from typing import Dict
 from felix.settings import settings
-from felix.motion.joystick import Joystick, JoystickNonLinearDampener
-from lib.interfaces import Twist
+from felix.motion.joystick import JoystickNonLinearDampener
 from felix.vision.image import ImageUtils
 from lib.nodes import BaseNode
 import time
 from felix.vision.image_collector import ImageCollector
-from felix.signals import sig_cmd_vel, sig_raw_image
+from felix.signals import sig_raw_image
 
 class Robot(BaseNode):
     def __init__(self, **kwargs):

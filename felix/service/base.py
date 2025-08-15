@@ -5,15 +5,17 @@ from felix.bus import SimpleEventBus
 from typing import Any
 import logging 
 import atexit
+import numpy as np
 
 class BaseService:
     """Base class for services using the event bus"""
     
-    def __init__(self, event_bus: SimpleEventBus):
+    def __init__(self):
+        self.event_bus = SimpleEventBus()
         self.service_name = self.__class__.__name__
         self.logger = logging.getLogger(self.service_name)
         self.service_id = f"{self.service_name}_{int(time.time() * 1000)}"
-        self.event_bus = event_bus
+
         self.running = False
         self.frequency_hz = 10  # Default to 10 Hz if not specified
         
@@ -43,10 +45,18 @@ class BaseService:
     def publish_message(self, topic: str, message: Any):
         """Publish a message to the event bus"""
         return self.event_bus.publish(topic, message, self.service_id)
+
+    def publish_ndarray(self, topic: str, array: np.ndarray):
+        """Publish a numpy array efficiently via the event bus."""
+        return self.event_bus.publish_ndarray(topic, array, self.service_id)
     
     def subscribe_to_topic(self, topic: str, callback_method):
         """Subscribe to a topic"""
         self.event_bus.subscribe(topic, callback_method)
+
+    def subscribe_to_image(self, topic: str, callback_method):
+        """Subscribe to an image/ndarray topic with auto-conversion to numpy arrays."""
+        self.event_bus.subscribe_ndarray(topic, callback_method)
 
     def loaded(self):
         self.logger.info(f"{self.service_name} is loaded and ready...")

@@ -32,8 +32,8 @@ class Direction(str,Enum):
 
 class AutoDriveService(BaseService):
 
-    def __init__(self, event_bus: SimpleEventBus, model_file=settings.TRAINING.training_model_path):
-        super().__init__(event_bus)
+    def __init__(self, model_file=settings.TRAINING.training_model_path):
+        super().__init__()
         self.device = torch.device('cuda' if torch.backends.cuda.is_built() else 'cpu')
         self.model_file = model_file
         self.model_loaded = False
@@ -43,7 +43,7 @@ class AutoDriveService(BaseService):
         
         
     def setup_subscriptions(self):
-        self.subscribe_to_topic(Topics.RAW_IMAGE, self._on_raw_image)
+        self.subscribe_to_image(Topics.RAW_IMAGE, self._on_raw_image)
         self.subscribe_to_topic(Topics.AUTODRIVE, self._on_autodrive)
         self.subscribe_to_topic(Topics.STOP, self._on_stop)
         self.subscribe_to_topic(Topics.TOF, self._on_tof)  
@@ -55,14 +55,15 @@ class AutoDriveService(BaseService):
 
     def _on_raw_image(self, payload):
         self.logger.debug("🌆 Raw image received")
-        self.raw_image = np.array(payload.get("message"), dtype=np.uint8)
-        self.logger.debug("🌁 Raw image saved")
+        # subscribe_to_image guarantees numpy array in payload["message"]
+        self.raw_image = payload.get("message")
+        self.logger.debug("🌁 Raw image saved: %s", None if self.raw_image is None else self.raw_image.shape)
 
     def _on_autodrive(self, _=None):
         self.logger.info("AutoDrive signal received")
         self.is_active = not self.is_active
         if not self.is_active:
-            self.publish_message(Topics.CMD_VEL, payload=Twist().dict)
+            self.publish_message(Topics.CMD_VEL, message=Twist().dict)
         self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
@@ -94,11 +95,11 @@ class AutoDriveService(BaseService):
             try:
                 twist = self.predict(self.raw_image)
                 self.logger.info(f"AutoDrive: {twist}")
-                self.publish_message(Topics.CMD_VEL, payload=twist.dict)
+                self.publish_message(Topics.CMD_VEL, message=twist.dict)
             except Exception as ex:  
                 self.logger.info(f"Autodrive error: {ex}. Stopping")
-                self.publish_message(Topics.CMD_VEL, payload=Twist().dict)
-                self.publish_message(Topics.STOP, {})
+                self.publish_message(Topics.CMD_VEL, message=Twist().dict)
+                self.publish_message(Topics.STOP, message={})
             
     def load_state_dict(self, model):
         try:
@@ -125,12 +126,11 @@ class ObstacleAvoider(AutoDriveService):
     normalize = torchvision.transforms.Normalize(mean, stdev)
 
     def __init__(self, 
-                 event_bus: SimpleEventBus,
                  model_file = settings.TRAINING.training_model_path, 
                  num_targets = settings.TRAINING.num_categories, 
                  linear = settings.autodrive_linear, 
                  angular = settings.autodrive_angular):
-        super().__init__(event_bus, model_file)
+        super().__init__(model_file)
         self.linear = linear
         self.angular = angular
         self.num_targets = num_targets
@@ -188,9 +188,8 @@ class BinaryObstacleAvoider(ObstacleAvoider):
     BLOCKED = 0
     FORWARD = 1
 
-    def __init__(self, event_bus: SimpleEventBus):
+    def __init__(self,):
         super().__init__(
-            event_bus=event_bus,
             model_file=settings.TRAINING.training_model_path,
             num_targets=2 
         )
@@ -227,9 +226,8 @@ class TernaryObstacleAvoider(ObstacleAvoider):
     _left = 1
     _right = 2
 
-    def __init__(self, event_bus: SimpleEventBus):
+    def __init__(self):
         super().__init__(
-            event_bus=event_bus,
             model_file=settings.TRAINING.training_model_path,
             num_targets=3,
         )
@@ -275,12 +273,11 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         
 
 async def run(frequency: int = 20):
-    event_bus = SimpleEventBus(port=5555)
     
     if settings.TRAINING.mode == "ternary":
-        autodrive = TernaryObstacleAvoider(event_bus)
+        autodrive = TernaryObstacleAvoider()
     else:
-        autodrive = BinaryObstacleAvoider(event_bus)
+        autodrive = BinaryObstacleAvoider()
 
     autodrive.start()
 

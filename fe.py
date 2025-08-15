@@ -12,25 +12,13 @@ import logging
 from felix.types import Twist, Vector3 
 
 logging.basicConfig(level=logging.DEBUG)
+if "bus" not in st.session_state:
+    st.session_state.bus = SimpleEventBus()
 
-#if "bus" not in st.session_state:
-#    st.session_state.bus = SimpleEventBus(port=5555)
 
-class Publisher(BaseService):
-    def __init__(self):
-        super().__init__("Publisher", SimpleEventBus(port=5555))
-        self.logger = logging.getLogger("Publisher")
-        self.logger.setLevel(logging.DEBUG)
+bus: SimpleEventBus = st.session_state.bus
 
-p = Publisher()
 
-p.start()
-
-p.publish_message(Topics.CMD_VEL, Twist(linear=Vector3(x=0.0, y=0.7, z=0.0), angular=Vector3(x=0.0, y=0.0, z=0.0)).dict)
-
-while True:
-    time.sleep(1)
-"""
 @dataclass
 class JoystickValue:
     x: float = 0.0
@@ -52,7 +40,7 @@ class JoystickValue:
 def _handle_joystick(value: JoystickValue):
     req = JoystickRequest(x=value.x, y=value.y, strafe=value.strafe, power=value.power)
     twist = Joystick.get_twist(req)
-    p.publish_message(Topics.CMD_VEL, twist.dict)
+    bus.publish(Topics.CMD_VEL, twist.dict, f"fe-{int(time.time() * 1000)}")
 
 @st.fragment
 def left_joystick():
@@ -89,4 +77,3 @@ with cols[0]:
     left_joystick()
 with cols[1]:
     right_joystick() 
-"""

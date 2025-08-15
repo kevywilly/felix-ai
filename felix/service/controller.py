@@ -66,8 +66,8 @@ class NavRequest:
 
 
 class ControllerService(BaseService):
-    def __init__(self, event_bus: SimpleEventBus):
-        super().__init__(event_bus)
+    def __init__(self):
+        super().__init__()
 
         self.camera_image = None
 
@@ -107,7 +107,7 @@ class ControllerService(BaseService):
         self.subscribe_to_topic(Topics.STOP, self._stop_handler)
         self.subscribe_to_topic(Topics.CMD_VEL, self._cmd_vel_handler)
         self.subscribe_to_topic(Topics.NAV_TARGET, self._nav_target_handler)
-        self.subscribe_to_topic(Topics.RAW_IMAGE, self._raw_image_handler)
+        self.subscribe_to_image(Topics.RAW_IMAGE, self._raw_image_handler)
 
     def _stop_handler(self, payload=None):
         self.stop()
@@ -117,14 +117,13 @@ class ControllerService(BaseService):
         self._apply_nav_request(request)
 
     def _cmd_vel_handler(self, payload: dict):
-        self.logger.info(f"Received cmd_vel: {payload}")
+        self.logger.debug(f"Received cmd_vel: {payload}")
         request = Twist.model_validate(payload.get("message"))
-        self.logger.info(f"Received PARSED")
         self._apply_cmd_vel(request)
 
     def _raw_image_handler(self, payload: dict):
-        self.logger.info("Received raw image")
-        self.camera_image = np.array(payload.get("message"), dtype=np.uint8)
+        self.logger.debug("Received raw image")
+        self.camera_image = payload.get("message")
 
     def get_imu_data(self):
         self.attitude_data = Vector3.from_tuple(self._bot.get_imu_attitude_data())
@@ -143,8 +142,8 @@ class ControllerService(BaseService):
 
     def on_stop(self):
         self.cmd_vel = Twist()
+        self._apply_cmd_vel(Twist())
         self.prev_cmd_vel = Twist()
-        self._bot.set_motor(0, 0, 0, 0)
         self.autodrive = False
   
     def _apply_nav_request(self, payload: NavRequest):
@@ -190,8 +189,7 @@ class ControllerService(BaseService):
         self.get_imu_data()
 
 async def run(frequency: int = 10):
-    event_bus = SimpleEventBus(port=5555)
-    svc = ControllerService(event_bus=event_bus)
+    svc = ControllerService()
     #svc._apply_cmd_vel(Twist(linear=Vector3(x=0.5, y=0.0, z=0.0), angular=Vector3(x=0.0, y=0.0, z=0.0)))
     svc.start()
 

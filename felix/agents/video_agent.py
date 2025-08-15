@@ -10,7 +10,7 @@ from felix.signals import sig_raw_image
 import cv2
 from felix.settings import settings
 from datetime import datetime
-
+import logging
 
 class VideoStream(Agent):
     """
@@ -91,6 +91,19 @@ class VideoStream(Agent):
     def shutdown(self):
         self.video_output.stop()
         self.video_source.stop()
+
+    def run(self, timeout=None):
+        """
+        Run the agent forever or return after the specified timeout (in seconds)
+        """
+        self.start()
+        
+        if self.save_mermaid:
+            self.to_mermaid(save=self.save_mermaid)
+            
+        logging.info(f"{type(self).__name__} - system ready")
+        self.pipeline[0].join(timeout)
+        return self
 
 
 if __name__ == "__main__":

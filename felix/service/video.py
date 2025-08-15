@@ -1,8 +1,9 @@
 import asyncio
 import atexit
-
+from datetime import datetime
+import os
 import click
-from felix.bus import SimpleEventBus
+from felix.settings import settings
 from felix.service.base import BaseService
 from nano_llm import Agent
 from nano_llm.plugins import VideoSource, VideoOutput
@@ -13,9 +14,6 @@ from jetson_utils import (
 )
 
 from felix.topics import Topics
-import logging
-
-#!/usr/bin/env python3
 import logging
 
 
@@ -40,8 +38,15 @@ class VideoStream(Agent):
             video_input_framerate=60
         )
 
+
+        filename = os.path.join(
+            settings.TRAINING.data_root, "videos", f"{datetime.now().timestamp()}.mp4"
+        )
+        filename = f"file://{filename}"
+
+
         self.video_output = VideoOutput(
-            "webrtc://@:8554/output", video_output_codec="h264" #, video_output_save=filename
+            "webrtc://@:8554/output", video_output_codec="h264" , video_output_save=filename
         )
 
         self.video_source.add(self.on_video, threaded=False)
@@ -61,9 +66,9 @@ class VideoStream(Agent):
     def _convert_image(self, rgb_img):
         cv_image = cudaToNumpy(rgb_img)
         self.image = cv2.cvtColor(cv_image, cv2.COLOR_RGBA2BGR)
-        # Convert image ndarray to list for JSON serialization
-        image_list = self.image.tolist()
-        self.service.publish_message(Topics.RAW_IMAGE, image_list)
+        # Publish as binary ndarray over ZeroMQ (fast, zero-copy send)
+        if self.service:
+            self.service.publish_ndarray(Topics.RAW_IMAGE, self.image)
 
     def shutdown(self):
         self.video_output.stop()
@@ -85,9 +90,8 @@ class VideoStream(Agent):
 class VideoService(BaseService):
     def __init__(
         self,
-        event_bus: SimpleEventBus,
     ):
-        super().__init__(event_bus)
+        super().__init__()
 
         self.agent = VideoStream(self)
         
@@ -102,8 +106,7 @@ class VideoService(BaseService):
         self.agent.shutdown()
 
 async def run(frequency: int = 10):
-    event_bus = SimpleEventBus(port=5555)
-    video_service = VideoService(event_bus=event_bus)
+    video_service = VideoService()
     video_service.start()
     
     await video_service.spin(frequency)

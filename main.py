@@ -44,7 +44,7 @@ robot = Robot()
 # chat_node = ChatNode()
 
 controller = Controller(frequency=30)
-joystick = Joystick(curve_factor=settings.JOY_DAMPENING_CURVE_FACTOR)
+
 tof = TOFCluster(debug=False)
 
 if settings.TRAINING.mode == "ternary":
@@ -115,7 +115,8 @@ def api_navigate():
 @app.post("/api/joystick")
 def api_joystick():
     data = request.get_json()
-    _send(sig_joystick, JoystickRequest.model_validate(data))
+    twist = Joystick.get_twist(JoystickRequest.model_validate(data))
+    _send(sig_cmd_vel, twist)
     return data
 
 

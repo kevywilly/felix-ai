@@ -42,6 +42,20 @@ class VideoStream(Agent):
     def on_video(self, image):
         logging.debug(f"captured {image.width}x{image.height} frame from {self.video_source.resource}")
 
+    
+    def run(self, timeout=None):
+        """
+        Run the agent forever or return after the specified timeout (in seconds)
+        """
+        self.start()
+        
+        if self.save_mermaid:
+            self.to_mermaid(save=self.save_mermaid)
+            
+        logging.info(f"{type(self).__name__} - system ready")
+        self.pipeline[0].join(timeout)
+        return self
+
          
 if __name__ == "__main__":
     # parser = ArgParser(extras=['video_input', 'video_output', 'log'])

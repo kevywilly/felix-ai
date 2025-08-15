@@ -1,8 +1,6 @@
-from typing import Dict
 from lib.interfaces import Twist
 from felix.settings import settings
 import numpy as np
-from lib.log import logger
 import math
 
 class JoystickRequest:
@@ -60,7 +58,7 @@ class JoystickNonLinearDampener:
         return smoothed_x, smoothed_y
 
 class Joystick:
-    dampener = JoystickNonLinearDampener(0.25)
+    dampener = JoystickNonLinearDampener(settings.JOY_DAMPENING_CURVE_FACTOR)
 
     @classmethod
     def dampen(cls, x):

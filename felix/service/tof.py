@@ -71,8 +71,8 @@ def _init_sensors() -> list[VL53L0X]:
     return vl53
 
 class TOFService(BaseService):
-    def __init__(self, event_bus: SimpleEventBus):
-        super().__init__(event_bus)
+    def __init__(self):
+        super().__init__()
 
         self.sensors = []
         logger.info("Initializing TOF sensors")
@@ -108,8 +108,7 @@ class TOFService(BaseService):
 
 async def run(frequency: int = 10):
     logging.basicConfig()
-    event_bus = SimpleEventBus(port=5555)
-    cluster = TOFService(event_bus=event_bus)
+    cluster = TOFService()
     cluster.start()
 
     await cluster.spin(frequency_hz=frequency)
