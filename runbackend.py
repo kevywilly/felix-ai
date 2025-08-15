@@ -14,7 +14,6 @@ scripts = [
     'felix/service/controller.py', 
     'felix/service/video.py', 
     'felix/service/autodrive.py',
-    'fe.py'
 ]
 
 processes = []
