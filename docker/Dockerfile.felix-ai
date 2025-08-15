@@ -31,6 +31,7 @@ RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   jetson.GPIO \
   pyzmq \
   click \
+  nicegui 
   
 
 
