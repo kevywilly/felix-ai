@@ -41,7 +41,6 @@ class AutoDriveService(BaseService):
         self.raw_image = None
         self.tof = {}
         
-        
     def setup_subscriptions(self):
         self.subscribe_to_image(Topics.RAW_IMAGE, self._on_raw_image)
         self.subscribe_to_topic(Topics.AUTODRIVE, self._on_autodrive)
@@ -66,7 +65,7 @@ class AutoDriveService(BaseService):
             self.publish_message(Topics.CMD_VEL, message=Twist().dict)
         self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
-    def _on_stop(self, sender, **kwargs):
+    def _on_stop(self, *args, **kwargs):
         self.logger.info("Stop signal received, deactivating autodrive.")
         self.is_active = False
         self.logger.info(f"AutoDrive is_active: {self.is_active}")
@@ -77,8 +76,8 @@ class AutoDriveService(BaseService):
     
     @property
     def tof_prediction(self):
-        left = self.tof.get(0)
-        right = self.tof.get(1)
+        left = self.tof.get(0, settings.TOF_THRESHOLD+1)
+        right = self.tof.get(1, settings.TOF_THRESHOLD+1)
         if left > 200 and right > 200:
             return Direction.FORWARD
         elif left < right:
@@ -86,18 +85,14 @@ class AutoDriveService(BaseService):
         else:
             return Direction.LEFT
     
-    @property
-    def blocked_right(self):
-        return self.tof.get(1) < settings.TOF_THRESHOLD
-
     async def spinner(self):
         if self.is_active and self.raw_image is not None:
             try:
                 twist = self.predict(self.raw_image)
-                self.logger.info(f"AutoDrive: {twist}")
+                #self.logger.info(f"AutoDrive: {twist}")
                 self.publish_message(Topics.CMD_VEL, message=twist.dict)
             except Exception as ex:  
-                self.logger.info(f"Autodrive error: {ex}. Stopping")
+                self.logger.error(f"Autodrive error: {ex}. Stopping")
                 self.publish_message(Topics.CMD_VEL, message=Twist().dict)
                 self.publish_message(Topics.STOP, message={})
             
@@ -113,7 +108,7 @@ class AutoDriveService(BaseService):
             self.logger.warning(ex)
             self.model_loaded = False
 
-    def _on_stop(self):
+    def _on_stop(self, *args, **kwargs):
         self.is_active = False
 
     @abstractmethod
@@ -217,7 +212,7 @@ class BinaryObstacleAvoider(ObstacleAvoider):
             cmd.angular.z = self.angular
             self.status = self.BLOCKED
         
-        self.logger.pretty(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
+        self.logger.info(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
         return cmd
 
 class TernaryObstacleAvoider(ObstacleAvoider):
@@ -239,7 +234,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         predictions = self.get_predictions(input)
 
         if predictions is None:
-            print("autodriver failed to get predictions, stopping.")
+            self.logger.error("autodriver failed to get predictions, stopping.")
             return cmd
         
         forward = float(predictions[self._forward])
@@ -249,7 +244,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         tof = self.tof_prediction
 
 
-        self.logger.pretty(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
+        self.logger.info(f"inputs: l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
 
         if forward > 0.5:
             self.direction = Direction.FORWARD
@@ -272,7 +267,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         return cmd
         
 
-async def run(frequency: int = 20):
+async def run(frequency: int = 10):
     
     if settings.TRAINING.mode == "ternary":
         autodrive = TernaryObstacleAvoider()

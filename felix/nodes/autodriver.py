@@ -143,13 +143,13 @@ class ObstacleAvoider(AutoDriver):
 
     def _print_status(self):
 
-        logger.pretty(
-            "autodriver", 
-            f"model file: {self.model_file}",
-            f"model exists: {self.model_file_exists}",
-            f"model loaded: {self.model_loaded}",
-            f"targets: {self.num_targets}",
-            f"linear: {self.linear}",
+        self.logger.info(
+            "autodriver: "
+            f"model file: {self.model_file}, "
+            f"model exists: {self.model_file_exists}, "
+            f"model loaded: {self.model_loaded}, "
+            f"targets: {self.num_targets}, "
+            f"linear: {self.linear}, "
             f"angular: {self.angular}"
         )
 
