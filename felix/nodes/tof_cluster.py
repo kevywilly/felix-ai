@@ -1,5 +1,4 @@
 
-import Jetson.GPIO as GPIO
 import time
 import board
 from digitalio import DigitalInOut
@@ -7,7 +6,7 @@ from adafruit_vl53l0x import VL53L0X
 from lib.interfaces import Measurement
 from lib.nodes.base import BaseNode
 from lib.log import logger
-from felix.signals import sig_tof
+from felix.signals import Topics
 
 i2c = board.I2C()
 
@@ -83,7 +82,7 @@ class TOFCluster(BaseNode):
     def detect_range(self):
         for index, sensor in enumerate(self.sensors):
             m = Measurement(index, sensor.range)
-            sig_tof.send("tof", payload=m)
+            Topics.tof.send("tof", payload=m)
             if self.debug:
                 print(m)
            
@@ -107,8 +106,6 @@ if __name__ == "__main__":
         for range in cluster.detect_range():
             print(range)
             time.sleep(0.2)
-
-    
 else:
     print(
         "Multiple VL53L0X sensors' addresses are assigned properly\n"

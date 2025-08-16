@@ -9,6 +9,7 @@ from flask_cors import CORS
 from flask import Flask, Response, request, render_template
 from felix.motion.joystick import Joystick, JoystickRequest
 from felix.agents.video_agent import VideoStream
+from felix.signals import Topics
 
 from felix.nodes import (
     Controller,
@@ -17,13 +18,7 @@ from felix.nodes import (
 
 from felix.nodes.controller import NavRequest
 from felix.nodes.tof_cluster import TOFCluster
-from felix.signals import (
-    sig_joystick,
-    sig_nav_target,
-    sig_cmd_vel,
-    sig_autodrive,
-    sig_stop,
-)
+
 from lib.interfaces import Twist
 from felix.settings import settings
 
@@ -74,7 +69,7 @@ def _index():
 
 @app.post("/api/stop")
 def _stop():
-    sig_stop.send("robot")
+    Topics.stop.send("robot")
     return {"status": "ok"}
 
 
@@ -87,7 +82,7 @@ def stream():
 
 @app.post("/api/twist")
 def api_twist():
-    return sig_cmd_vel.send(
+    return Topics.cmd_vel.send(
         "robot", payload=Twist.model_validate(request.get_json())
     ).dict
 
@@ -99,7 +94,7 @@ def api_get_autodrive():
 
 @app.post("/api/autodrive")
 def api_set_autodrive():
-    sig_autodrive.send("robot")
+    Topics.autodrive.send("robot")
     return {"status": autodrive.is_active}
 
 
@@ -107,7 +102,7 @@ def api_set_autodrive():
 def api_navigate():
     data = request.get_json()
     nav_request = NavRequest.model_validate(data)
-    _send(sig_nav_target, nav_request)
+    Topics.nav_target.send("robot", payload=nav_request)
 
     return data
 
@@ -116,7 +111,7 @@ def api_navigate():
 def api_joystick():
     data = request.get_json()
     twist = Joystick.get_twist(JoystickRequest.model_validate(data))
-    _send(sig_cmd_vel, twist)
+    Topics.cmd_vel.send("robot", payload=twist)
     return data
 
 

@@ -2,7 +2,7 @@ from functools import cached_property
 import cv2
 from felix.settings import settings
 from lib.nodes import BaseNode
-from felix.signals import sig_raw_image
+from felix.signals import Topics
 
 class VideoCapture:
     def __init__(self, *args):
@@ -43,7 +43,7 @@ class Camera(BaseNode):
             raise Exception("Could not initialize camera")
         else:
             self.image = frame
-            sig_raw_image.send(self, payload=frame)
+            Topics.raw_image.send(self, payload=frame)
             return cap
 
     def _convert_color(self, frame):
@@ -64,7 +64,7 @@ class Camera(BaseNode):
             frame = self._convert_color(frame)
             frame = self._undistort(frame)
             self.image = frame
-            sig_raw_image.send(self, payload=frame)
+            Topics.raw_image.send(self, payload=frame)
             """
             try:
                 cv2.namedWindow("felix", cv2.WINDOW_NORMAL)

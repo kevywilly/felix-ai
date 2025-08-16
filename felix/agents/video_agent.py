@@ -6,9 +6,9 @@ from nano_llm.utils import ArgParser
 from jetson_utils import (
     cudaToNumpy,
 )
-from felix.signals import sig_raw_image
 import cv2
 from felix.settings import settings
+from felix.signals import Topics
 from datetime import datetime
 import logging
 
@@ -86,7 +86,7 @@ class VideoStream(Agent):
 
         self.image = cv2.cvtColor(cv_image, cv2.COLOR_RGBA2BGR)
 
-        sig_raw_image.send(self, payload=self.image)
+        Topics.raw_image.send(self, payload=self.image)
 
     def shutdown(self):
         self.video_output.stop()
@@ -116,7 +116,5 @@ if __name__ == "__main__":
         "video_output": "webrtc://@:8554/output",
         "log_level": "info",
     }
-
-    # agent = VideoStream(**args).run()
 
     agent = VideoStream().run()

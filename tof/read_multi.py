@@ -1,13 +1,13 @@
 from felix.nodes.tof_cluster import TOFCluster
 import asyncio
-from felix.signals import sig_tof
+from felix.signals import Topics
 
 cluster = TOFCluster(debug=True)
 
 def on_tof(sender, payload):
     print("GOT", payload)
 
-sig_tof.connect(on_tof)
+Topics.tof.connect(on_tof)
 
 async def main():
     await cluster.spin(5)

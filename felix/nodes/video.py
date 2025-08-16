@@ -1,8 +1,8 @@
 from enum import Enum
 from lib.nodes import BaseNode
-from felix.signals import sig_raw_image, sig_image_tensor
+from felix.signals import Topics
 from nano_llm.plugins import VideoSource
-from jetson_utils import cudaToNumpy, cudaConvertColor, cudaDeviceSynchronize, cudaAllocMapped
+from jetson_utils import cudaToNumpy
 
 import cv2
 
@@ -47,7 +47,7 @@ class VideoNode(BaseNode):
 
         self.image = cv2.cvtColor(cv_image, cv2.COLOR_RGBA2BGR)
     
-        sig_raw_image.send(self, payload=self.image)
+        Topics.raw_image.send(self, payload=self.image)
 
     def _read_image(self):
         img = self.cap.capture()
@@ -56,7 +56,7 @@ class VideoNode(BaseNode):
         
         self.image_tensor = img
 
-        sig_image_tensor.send(self, payload=img)
+        Topics.image_tensor.send(self, payload=img)
 
         self._convert_image(img)
 

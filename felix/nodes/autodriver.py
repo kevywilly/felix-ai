@@ -11,7 +11,7 @@ from felix.settings import settings
 from felix.vision.image import ImageUtils
 import os
 from lib.log import logger
-from felix.signals import sig_raw_image, sig_stop, sig_autodrive, sig_cmd_vel, sig_tof
+from felix.signals import Topics
 from enum import Enum
 
 torch.hub.set_dir(settings.TRAINING.model_root)
@@ -40,10 +40,10 @@ class AutoDriver(BaseNode):
         self.raw_image = None
         self.tof = {}
         
-        sig_raw_image.connect(self._on_raw_image)
-        sig_autodrive.connect(self._on_autodrive)
-        sig_stop.connect(self._on_stop)
-        sig_tof.connect(self._on_tof)
+        Topics.raw_image.connect(self._on_raw_image)
+        Topics.autodrive.connect(self._on_autodrive)
+        Topics.stop.connect(self._on_stop)
+        Topics.tof.connect(self._on_tof)
 
     def _on_tof(self, sender, payload: Measurement):
         self.tof[payload.id] = payload.value
@@ -55,7 +55,7 @@ class AutoDriver(BaseNode):
         logger.info("AutoDrive signal received")
         self.is_active = not self.is_active
         if not self.is_active:
-            sig_cmd_vel.send("autodrive", payload=Twist())
+            Topics.cmd_vel.send("autodrive", payload=Twist())
         logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
@@ -87,11 +87,11 @@ class AutoDriver(BaseNode):
             try:
                 cmd = self.predict(self.raw_image)
                 logger.info(f"AutoDrive: {cmd}")
-                sig_cmd_vel.send("autodrive", payload=cmd)
+                Topics.cmd_vel.send("autodrive", payload=cmd)
             except Exception as ex:  # noqa: E722
                 logger.info(f"Autodrive error: {ex}. Stopping")
-                sig_cmd_vel.send("autodrive", payload=Twist())
-                sig_stop.send("autodrive")
+                Topics.cmd_vel.send("autodrive", payload=Twist())
+                Topics.stop.send("autodrive")
             
     
     def load_state_dict(self, model):

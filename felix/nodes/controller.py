@@ -1,6 +1,5 @@
 import math
 from typing import Optional
-from felix.motion.joystick import JoystickRequest
 from felix.settings import settings
 from lib.interfaces import Odometry, Twist, Vector3
 from lib.nodes.base import BaseNode
@@ -12,9 +11,8 @@ if settings.ROBOT == "felixMac":
 else:
     from lib.controllers.rosmaster import Rosmaster
 
-import numpy as np
 import time
-from felix.signals import sig_cmd_vel, sig_nav_target, sig_raw_image, sig_stop
+from felix.signals import Topics
 
 
 class NavRequest:
@@ -104,10 +102,11 @@ class Controller(BaseNode):
         )
 
     def _connect_signals(self):
-        sig_stop.connect(self._on_stop_signal)
-        sig_cmd_vel.connect(self._on_cmd_vel_signal)
-        sig_nav_target.connect(self._on_nav_signal)
-        sig_raw_image.connect(self._on_raw_image_signal)
+        Topics.stop.connect(self._on_stop_signal)
+        Topics.cmd_vel.connect(self._on_cmd_vel_signal)
+        Topics.nav_target.connect(self._on_nav_signal)
+        Topics.raw_image.connect(self._on_raw_image_signal)
+        Topics.autodrive.connect(self._on_stop_signal)
 
     def _on_stop_signal(self, sender, **kwargs):
         self.stop()

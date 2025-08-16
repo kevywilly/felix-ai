@@ -1,6 +1,6 @@
 import termcolor
 from lib.nodes import BaseNode
-from felix.signals import sig_image_tensor
+from felix.signals import Topics
 from nano_llm import NanoLLM, ChatHistory
 from nano_llm.utils import ArgParser, load_prompts
 from lib.log import logger
@@ -46,7 +46,7 @@ class ChatNode(BaseNode):
 
         self.image_tensor = None
 
-        sig_image_tensor.connect(self._on_image_tensor)
+        Topics.image_tensor.connect(self._on_image_tensor)
 
     def _on_image_tensor(self, sender, payload):
         self.image_tensor = payload
