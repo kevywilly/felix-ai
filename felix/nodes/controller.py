@@ -84,9 +84,6 @@ class Controller(BaseNode):
         self.camera_image = None
 
         self.print_stats()
-        self.autodrive = False
-
-        self.autodriver = None  # TernaryObstacleAvoider(model_file=settings.TRAINING.model_root+"/checkpoints/ternary_obstacle_avoidance.pth")
 
         self._connect_signals()
 
@@ -108,7 +105,6 @@ class Controller(BaseNode):
         Topics.cmd_vel.connect(self._on_cmd_vel_signal)
         Topics.nav_target.connect(self._on_nav_signal)
         Topics.raw_image.connect(self._on_raw_image_signal)
-        Topics.autodrive.connect(self._on_stop_signal)
 
     def _on_stop_signal(self, sender, **kwargs):
         self.stop()
@@ -131,6 +127,7 @@ class Controller(BaseNode):
 
     def spinner(self):
         self.get_imu_data()
+        self.logger.debug(f"motion: {self._bot.get_motion_data()}")
 
     def get_stats(self):
         return f"""
@@ -138,9 +135,11 @@ class Controller(BaseNode):
         """
 
     def stop(self):
+        self.logger.info("Stopping controller")
         self.cmd_vel = Twist()
         self.prev_cmd_vel = Twist()
         self._bot.set_motor(0, 0, 0, 0)
+        self.logger.info(self._bot.get_motion_data())
 
     def _apply_nav_request(self, payload: NavRequest):
         self.logger.info(f"applying nav request\n: {payload}")
@@ -149,7 +148,12 @@ class Controller(BaseNode):
         self._apply_cmd_vel(odom.twist)
 
     def _apply_cmd_vel(self, cmd_vel: Twist):
-        if cmd_vel == self.prev_cmd_vel and not cmd_vel.is_zero:
+        if cmd_vel.is_zero:
+            self.logger.info("cmd_vel is zero, stopping")
+            self.stop()
+            return
+        
+        if cmd_vel == self.prev_cmd_vel:
             self.logger.info("cmd_vel is the same as previous, skipping")
             return
 
@@ -185,4 +189,3 @@ class Controller(BaseNode):
 
     def shutdown(self):
         self.stop()
-        self.autodrive = False

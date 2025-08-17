@@ -57,8 +57,6 @@ class AutoDriver(BaseNode):
     def _on_autodrive(self, sender, **kwargs):
         self.logger.info("AutoDrive signal received")
         self.is_active = not self.is_active
-        if not self.is_active:
-            Topics.cmd_vel.send("autodrive", payload=Twist())
         self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
@@ -83,6 +81,7 @@ class AutoDriver(BaseNode):
     
     
     def spinner(self):
+            
         if self.is_active and self.raw_image is not None:
             try:
                 cmd = self.predict(self.raw_image)
@@ -229,6 +228,9 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         
     def predict(self, input) -> Twist:
         cmd = Twist()
+
+        if not self.is_active:
+            return cmd
 
         predictions = self.get_predictions(input)
 

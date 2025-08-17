@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import logging 
 import sys
+
+from lib.interfaces import Twist
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 import os
@@ -79,18 +81,16 @@ def handle_snapshot(label: str):
     capture_buttons.refresh()
 
 def handle_autodrive(e):
-    state.autodrive_active = not state.autodrive_active
-    #Topics.stop.send("felix")  # stop the robot
-    #time.sleep(1)
+    state.autodrive_active = not autodrive.is_active
+    controller.stop() 
     Topics.autodrive.send("felix")
+    if not state.autodrive_active:
+        time.sleep(1)
+        controller.stop()
+    settings_buttons.refresh()
 
 def handle_xy_lock(e):
     state.xy_lock = not state.xy_lock
-    
-def get_snapshots(folder: str):
-    snapshots = robot.get_snapshots(folder)
-    print(snapshots)
-    return robot.get_snapshots(folder)
 
 def _on_left_move(e):
     handle_joystick(e.x, e.y, strafe=False)
@@ -142,7 +142,7 @@ def video_frame():
 def settings_buttons():
     with ui.row().classes('w-full justify-center items-start mt-2').style('gap: 12px;'):
         with ui.row().classes('w-full max-w-3xl justify-center').style('gap: 8px; flex-wrap: nowrap;'):                
-            ui.button('Lock XY: Off', on_click=lambda e: handle_xy_lock(e)).style('flex: 1 1 0; min-width: 160px;')
+            ui.button(f'Lock XY: {state.xy_lock}', on_click=lambda e: handle_xy_lock(e)).style('flex: 1 1 0; min-width: 160px;')
 
             ui.button(f'Auto Drive {"On" if state.autodrive_active else "Off"}',
                     on_click=lambda e: handle_autodrive(e)
@@ -161,7 +161,7 @@ def joysticks():
         right.on_end(lambda: handle_joystick(0, 0, strafe=True))
 
 def power_slider():
-    with ui.row().classes('w-full justify-center items-center mt-2 mb-12').style('gap: 12px;'):
+    with ui.row().classes('w-full justify-center items-center mt-1 mb-4').style('gap: 12px;'):
         power_label = ui.label(f"Power: {state.power_percent}%").classes('text-sm')
         def _on_power_change(v):
             state.power_percent = int(v)
@@ -174,8 +174,8 @@ def power_slider():
 video_frame()
 capture_buttons()
 settings_buttons()
-joysticks()
 power_slider()
+joysticks()
     
 if __name__ == "__main__":
     try:
