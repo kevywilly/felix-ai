@@ -13,7 +13,9 @@ from felix.settings import settings
 from felix.training.datasets import CustomImageFolder
 from felix.training.transformations import RandomLowLightTransform, AddGaussianNoise
 from abc import ABC, abstractmethod
-from lib.log import logger
+import logging
+
+logger = logging.getLogger("trainer")
 
 if not os.path.exists(settings.TRAINING.model_root):
     os.makedirs(settings.TRAINING.model_root)
@@ -33,12 +35,14 @@ class Trainer(ABC):
         self.momentum = momentum
         self.model_file = model_file
 
-        logger.pretty(
-            "Loaded Trainer"
-            f"epochs: {self.epochs}",
-            f"lr: {self.lr}",
-            f"momentum: {self.momentum}",
-            f"test-pct: {self.test_pct}"
+        logger.info(
+            f"""
+            Loaded Trainer:
+            \tepochs: {self.epochs}
+            \tlr: {self.lr}
+            \tmomentum: {self.momentum}
+            \ttest-pct: {self.test_pct}
+            """
         )
 
 
@@ -66,13 +70,12 @@ class ObstacleTrainer(Trainer):
         self.pct_low_light = pct_low_light
         self.pct_noise = pct_noise
 
-        logger.pretty(
-            "Obstacle Trainer Loaded"
-            f"num_categories: {self.num_categories}",
-            f"images_path: {self.images_path}",
-            f"random_flip: {self.random_flip}",
-            f"target_flips: {self.target_flips}",
-
+        logger.info(
+            f"Obstacle Trainer Loaded\n"
+            f"\tnum_categories: {self.num_categories}\n"
+            f"\timages_path: {self.images_path}\n"
+            f"\trandom_flip: {self.random_flip}\n"
+            f"\ttarget_flips: {self.target_flips}\n"
         )
 
     def _get_dataset(self):

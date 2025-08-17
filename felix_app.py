@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
+import logging 
+import sys
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
 import os
-
-from lib.interfaces import Twist
-# Set the GStreamer debug level to ERROR
-#os.environ["GST_DEBUG"] = "*:1" 
-os.environ["LOG_LEVEL"] = "error"
-
+import time
 from dataclasses import dataclass
 from nicegui import ui
 import asyncio
@@ -51,13 +50,14 @@ def start_flask():
 def start_video():
     # args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
     VideoStream().run()
+    return
 
 
 async def main():
     await asyncio.gather(
+        tof.spin(10),
         controller.spin(), 
-        autodrive.spin(20), 
-        tof.spin(10)
+        autodrive.spin(20)
     )
 
 def _apply_lock(x: float, y: float) -> tuple[float, float]:
@@ -80,7 +80,8 @@ def handle_snapshot(label: str):
 
 def handle_autodrive(e):
     state.autodrive_active = not state.autodrive_active
-    Topics.cmd_vel.send("felix", payload=Twist())  # stop the robot
+    #Topics.stop.send("felix")  # stop the robot
+    #time.sleep(1)
     Topics.autodrive.send("felix")
 
 def handle_xy_lock(e):
@@ -141,10 +142,10 @@ def video_frame():
 def settings_buttons():
     with ui.row().classes('w-full justify-center items-start mt-2').style('gap: 12px;'):
         with ui.row().classes('w-full max-w-3xl justify-center').style('gap: 8px; flex-wrap: nowrap;'):                
-            ui.button('Lock XY: Off', on_click=handle_xy_lock).style('flex: 1 1 0; min-width: 160px;')
+            ui.button('Lock XY: Off', on_click=lambda e: handle_xy_lock(e)).style('flex: 1 1 0; min-width: 160px;')
 
             ui.button(f'Auto Drive {"On" if state.autodrive_active else "Off"}',
-                    on_click=handle_autodrive
+                    on_click=lambda e: handle_autodrive(e)
                     ).style('flex: 1 1 0; min-width: 160px;')
             
 def joysticks():

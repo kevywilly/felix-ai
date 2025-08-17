@@ -3,7 +3,9 @@ from lib.nodes import BaseNode
 from felix.signals import Topics
 from nano_llm import NanoLLM, ChatHistory
 from nano_llm.utils import ArgParser, load_prompts
-from lib.log import logger
+import logging
+
+logger = logging.getLogger("chat")
 
 # os.environ["HF_HOME"]=os.path.join(settings.TRAINING.model_root,"huggingface")
 # os.environ["TRANSFORMERS_CACHE"]=os.path.join(settings.TRAINING.model_root,"huggingface")
@@ -34,7 +36,7 @@ llm = NanoLLM.from_pretrained(
 
 assert llm.has_vision
 
-logger.pretty("Chat", **vars(args))
+logger.info(f"{vars(args)}")
 
 chat_history = ChatHistory(
     llm, args.chat_template, system_prompt

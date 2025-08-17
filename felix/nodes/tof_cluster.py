@@ -5,13 +5,9 @@ from digitalio import DigitalInOut
 from adafruit_vl53l0x import VL53L0X
 from lib.interfaces import Measurement
 from lib.nodes.base import BaseNode
-from lib.log import logger
 from felix.signals import Topics
 
 i2c = board.I2C()
-
-def fancy_print(title: str, items: list[str] = []):
-    logger.pretty(title, *items)
 
 def _get_sensor_instance(index: int) -> VL53L0X:
     try:
@@ -72,9 +68,9 @@ class TOFCluster(BaseNode):
         super(TOFCluster, self).__init__(**kwargs)
 
         self.sensors = []
-        fancy_print("Initializing TOF sensors")
+        self.logger.info("Initializing TOF sensors")
         self.sensors = init_sensors()
-        fancy_print("TOF sensors initialized")
+        self.logger.info("TOF sensors initialized")
 
         for sensor in self.sensors:
             sensor.start_continuous()
@@ -83,8 +79,7 @@ class TOFCluster(BaseNode):
         for index, sensor in enumerate(self.sensors):
             m = Measurement(index, sensor.range)
             Topics.tof.send("tof", payload=m)
-            if self.debug:
-                print(m)
+            self.logger.debug(m)
            
 
     def spinner(self):

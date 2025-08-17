@@ -1,11 +1,10 @@
 import asyncio
-from abc import ABC, abstractmethod
+from abc import ABC
 import atexit
-from lib.log import logger
+import logging
 
 class BaseNode(ABC):
 
-    logger = logger
 
     def __init__(self, **kwargs):
         """
@@ -13,7 +12,7 @@ class BaseNode(ABC):
         - frequency: float = 0
         - debug: bool = False
         """
-
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.frequency = kwargs.get('frequency', 10)
         self.debug: bool = kwargs.get('debug', False)
 
@@ -60,7 +59,7 @@ class BaseNode(ABC):
         """
         self._running = False
 
-        logger.info(f'{self.__class__.__name__} shutting down')
+        self.logger.info(f'{self.__class__.__name__} shutting down')
 
         self.shutdown()
         

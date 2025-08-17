@@ -3,7 +3,7 @@ from typing import Optional
 from felix.settings import settings
 from lib.interfaces import Odometry, Twist, Vector3
 from lib.nodes.base import BaseNode
-from lib.log import logger
+
 import numpy as np
 
 if settings.ROBOT == "felixMac":
@@ -93,12 +93,14 @@ class Controller(BaseNode):
         self.loaded()
 
     def print_stats(self):
-        logger.pretty(
-            "Vehicle Settings",
-            f"min_linear_velocity: {self.vehicle.min_linear_velocity}",
-            f"min_angular_velicity: {self.vehicle.min_angular_velocity}"
-            f"max_linear_velocity: {self.vehicle.max_linear_velocity}"
-            f"max_angular_velicity: {self.vehicle.max_angular_velocity}",
+        self.logger.info(
+            f"""
+            Vehicle Settings:
+            \tmin_linear_velocity: {self.vehicle.min_linear_velocity}
+            \tmin_angular_velicity: {self.vehicle.min_angular_velocity}
+            \tmax_linear_velocity: {self.vehicle.max_linear_velocity}
+            \tmax_angular_velicity: {self.vehicle.max_angular_velocity}
+            """
         )
 
     def _connect_signals(self):
@@ -165,7 +167,7 @@ class Controller(BaseNode):
 
         self._bot.set_motor(power[0], power[2], power[1], power[3])
         
-        self.logger.pretty("Apply CMD Vel", f"twist: {cmd_vel}", f"scaled: {scaled}", f"power: {power}")
+        self.logger.info(f"Apply CMD Vel: {cmd_vel}\nscaled: {scaled}\npower: {power}")
     
 
     def _reset_nav(self):

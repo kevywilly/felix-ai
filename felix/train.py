@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 from felix.training.obstacle_trainer import ObstacleTrainer
 from felix.settings import settings
-import os
 import argparse
-from datetime import datetime
 from felix.utils.file import move_file_with_timestamp
-from lib.log import logger
+from logging import getLogger
+
+logger = getLogger("train")
 
 if __name__ == "__main__":
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     iterations = args.iterations
     start_clean = args.start_clean
 
-    logger.pretty("Starting trainer with args", **vars(args))
+    logger.info(f"Starting trainer with args: {vars(args)}")
 
     if settings.TRAINING.mode == "ternary":
         target_flips = [0, 2, 1]
@@ -45,5 +45,5 @@ if __name__ == "__main__":
     )
 
     for i in range(iterations):
-        logger.pretty(f"Iteration {i+1} of {iterations}")
+        logger.info(f"Iteration {i+1} of {iterations}")
         trainer.train()

@@ -10,9 +10,10 @@ import torch.nn.functional as F
 from felix.settings import settings
 from felix.vision.image import ImageUtils
 import os
-from lib.log import logger
 from felix.signals import Topics
 from enum import Enum
+
+
 
 torch.hub.set_dir(settings.TRAINING.model_root)
 
@@ -29,8 +30,6 @@ class Direction(str,Enum):
 
 class AutoDriver(BaseNode):
 
-    logger = logger
-
     def __init__(self, model_file=settings.TRAINING.training_model_path, **kwargs):
         super(AutoDriver, self).__init__(**kwargs)
         self.device = torch.device('cuda' if torch.backends.cuda.is_built() else 'cpu')
@@ -45,23 +44,27 @@ class AutoDriver(BaseNode):
         Topics.stop.connect(self._on_stop)
         Topics.tof.connect(self._on_tof)
 
+        self.logger.info(f"AutoDriver using device: {self.device}")
+
     def _on_tof(self, sender, payload: Measurement):
         self.tof[payload.id] = payload.value
+        self.logger.debug(f"tof: {payload.id} = {payload.value}")
 
     def _on_raw_image(self, sender, payload):
         self.raw_image = payload
+        self.logger.debug("Raw image received")
 
     def _on_autodrive(self, sender, **kwargs):
-        logger.info("AutoDrive signal received")
+        self.logger.info("AutoDrive signal received")
         self.is_active = not self.is_active
         if not self.is_active:
             Topics.cmd_vel.send("autodrive", payload=Twist())
-        logger.info(f"AutoDrive is_active: {self.is_active}")
+        self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
-        logger.info("Stop signal received, deactivating autodrive.")
+        self.logger.info("Stop signal received, deactivating autodrive.")
         self.is_active = False
-        logger.info(f"AutoDrive is_active: {self.is_active}")
+        self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
     @property
     def model_file_exists(self) -> bool:
@@ -69,8 +72,8 @@ class AutoDriver(BaseNode):
     
     @property
     def tof_prediction(self):
-        left = self.tof.get(0)
-        right = self.tof.get(1)
+        left = self.tof.get(0, 0)
+        right = self.tof.get(1, 0)
         if left > 200 and right > 200:
             return Direction.FORWARD
         elif left < right:
@@ -78,20 +81,18 @@ class AutoDriver(BaseNode):
         else:
             return Direction.LEFT
     
-    @property
-    def blocked_right(self):
-        return self.tof.get(1) < settings.TOF_THRESHOLD
     
     def spinner(self):
         if self.is_active and self.raw_image is not None:
             try:
                 cmd = self.predict(self.raw_image)
-                logger.info(f"AutoDrive: {cmd}")
+                self.logger.info(f"AutoDrive: {cmd}")
                 Topics.cmd_vel.send("autodrive", payload=cmd)
             except Exception as ex:  # noqa: E722
-                logger.info(f"Autodrive error: {ex}. Stopping")
+                self.logger.info(f"Autodrive error: {ex}. Stopping")
                 Topics.cmd_vel.send("autodrive", payload=Twist())
                 Topics.stop.send("autodrive")
+                raise ex
             
     
     def load_state_dict(self, model):
@@ -102,8 +103,8 @@ class AutoDriver(BaseNode):
             else:
                 raise Exception("model file does not exist")
         except Exception as ex:
-            self.logger.warn('======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
-            self.logger.warn(ex.__str__())
+            self.logger.warning('======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
+            self.logger.warning(ex.__str__())
             self.model_loaded = False
 
     def shutdown(self):
@@ -144,13 +145,14 @@ class ObstacleAvoider(AutoDriver):
     def _print_status(self):
 
         self.logger.info(
-            "autodriver: "
-            f"model file: {self.model_file}, "
-            f"model exists: {self.model_file_exists}, "
-            f"model loaded: {self.model_loaded}, "
-            f"targets: {self.num_targets}, "
-            f"linear: {self.linear}, "
-            f"angular: {self.angular}"
+            f""" 
+            model file: {self.model_file}
+            model exists: {self.model_file_exists}
+            model loaded: {self.model_loaded}
+            targets: {self.num_targets}
+            linear: {self.linear}
+            angular: {self.angular}
+            """
         )
 
     def preprocess(self, sensor_image):
@@ -172,7 +174,7 @@ class ObstacleAvoider(AutoDriver):
         
         # we apply the `softmax` function to normalize the output vector so it sums to 1 (which makes it a probability distribution)
         y = F.softmax(y, dim=1)
-        print("softmax", y)
+        self.logger.debug("softmax", y)
         return y.flatten()
 
 class BinaryObstacleAvoider(ObstacleAvoider):
@@ -189,13 +191,12 @@ class BinaryObstacleAvoider(ObstacleAvoider):
         self.status = self.NA
 
     def predict(self, input) -> Twist:
-
         cmd = Twist()
 
         predictions = self.get_predictions(input)
 
         if predictions is None:
-            logger.info("No predictions")
+            self.logger.info("No predictions")
             return cmd
         
         forward = float(predictions[self.FORWARD])
@@ -210,7 +211,7 @@ class BinaryObstacleAvoider(ObstacleAvoider):
             cmd.angular.z = self.angular
             self.status = self.BLOCKED
         
-        logger.pretty(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
+        self.logger.debug(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
         return cmd
 
 class TernaryObstacleAvoider(ObstacleAvoider):
@@ -232,7 +233,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         predictions = self.get_predictions(input)
 
         if predictions is None:
-            print("autodriver failed to get predictions, stopping.")
+            self.logger.error("autodriver failed to get predictions, stopping.")
             return cmd
         
         forward = float(predictions[self._forward])
@@ -242,7 +243,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         tof = self.tof_prediction
 
 
-        logger.pretty(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
+        self.logger.info(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
 
         if forward > 0.5:
             self.direction = Direction.FORWARD
@@ -261,7 +262,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
 
             cmd.angular.z = self.angular if self.direction == Direction.LEFT else -self.angular
         
-        print("autodrive:", cmd)
+        self.logger.debug("autodrive:", cmd)
         return cmd
         
 
