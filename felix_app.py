@@ -155,21 +155,22 @@ def video_frame():
         ''').classes('w-full')
         with ui.element('div').classes('video-wrap'):
             ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen></iframe>')
-        capture_buttons()
-        power_slider()
+    capture_buttons()
 
 # New layout: video and buttons side by side, joysticks at bottom
 with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; width: 100%;'):
     with ui.element('div').classes('video-cell'):
-            video_frame()
-    with ui.element('div').classes('controls-cell').style('min-width: 260px; max-width: 340px;'):
-            with ui.column().classes('w-full justify-center').style('gap: 48px; flex-wrap: wrap;'):
-                    left = ui.joystick(size=100, color='blue', throttle=0.05)
-                    right = ui.joystick(size=100, color='green', throttle=0.05)
+        video_frame()
+    with ui.element('div').classes('controls-cell').style('min-width: 260px; max-width: 340px; height: 100%; display: flex; align-items: center; justify-content: center;'):
+        with ui.column().classes('w-full').style('align-items: center; justify-content: center; gap: 32px;'):
+            with ui.row().classes('joystick-row').style('width: 100%; justify-content: center; align-items: center; gap: 48px;'):
+                left = ui.joystick(size=100, color='blue', throttle=0.05)
+                right = ui.joystick(size=100, color='green', throttle=0.05)
             left.on_move(_on_left_move)
             left.on_end(lambda: handle_joystick(0, 0, strafe=False))
             right.on_move(_on_right_move)
             right.on_end(lambda: handle_joystick(0, 0, strafe=True))
+            power_slider()
 
 # Add grid CSS for responsiveness and fix height issues
 ui.html('''
