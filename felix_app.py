@@ -123,24 +123,23 @@ def power_slider():
             .on_value_change(lambda e: _on_power_change(e.value))
 
 def video_frame():
-    with ui.column().classes('video-column').style('width: 976px; max-width: 100vw; margin: 0 auto; padding: 0;'):
+    with ui.column().classes('video-column').style('width: 968px; max-width: 100vw; margin: 0 auto; padding: 0;'):
         ui.html('''
         <style>
         .video-wrap {
-            width: 976px;
-            height: 556px;
+            width: 968px;
+            height: 548px;
             max-width: 100vw;
-            max-height: 100vw;
             position: relative;
             background: #000;
             overflow: hidden;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
             box-sizing: border-box;
         }
         .video-wrap iframe {
-            width: 976px;
-            height: 556px;
+            width: 968px;
+            height: 548px;
             border: 0;
             display: block;
             background: #000;
@@ -149,7 +148,6 @@ def video_frame():
             box-sizing: border-box;
         }
         .capture-row {
-            max-width: 976px;
             width: 100%;
             margin: 0;
             padding: 0;
@@ -158,27 +156,26 @@ def video_frame():
         </style>
         ''')
         with ui.element('div').classes('video-wrap'):
-            ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen></iframe>')
+            ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen style="width:960px;height:540px"></iframe>')
         capture_buttons()
 
 # New layout: video and buttons side by side, joysticks at bottom
-with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; width: 100%;'):
+with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 968px minmax(300px, 380px); gap: 16px; align-items: center; width: 100%; min-height: 100vh;'):
     with ui.element('div').classes('video-cell'):
         video_frame()
-    with ui.element('div').classes('controls-cell').style('min-width: 260px; max-width: 340px; height: 100vh; display: flex; align-items: center; justify-content: center;'):
-        with ui.column().classes('w-full').style('align-items: center; justify-content: flex-start; gap: 16px; height: 100%;'):
-            # Center joysticks and slider both horizontally and vertically as a block
-            with ui.column().classes('joystick-slider-block').style('width: 100%; align-items: center; justify-content: center; gap: 20px;'):
-                with ui.row().classes('joystick-row').style('width: 100%; max-width: 260px; margin: 0 auto; justify-content: space-between; align-items: center; gap: 32px;'):
-                    left = ui.joystick(size=100, color='blue', throttle=0.05)
-                    right = ui.joystick(size=100, color='green', throttle=0.05)
-                left.on_move(_on_left_move)
-                left.on_end(lambda: handle_joystick(0, 0, strafe=False))
-                right.on_move(_on_right_move)
-                right.on_end(lambda: handle_joystick(0, 0, strafe=True))
-                # Power slider directly under joysticks, centered and aligned
-                with ui.row().classes('w-full').style('justify-content: center; align-items: center; margin-top: 8px;'):
-                    power_slider()
+    with ui.element('div').classes('controls-cell').style('min-width: 300px; max-width: 380px; height: 100vh; display: flex; align-items: center; justify-content: center;'):
+        with ui.column().classes('joystick-slider-block').style('width: 100%; align-items: center; justify-content: center; gap: 32px;'):
+            # Joysticks in a horizontal row, centered
+            with ui.row().classes('joystick-row').style('width: 100%; justify-content: center; align-items: center; gap: 48px;'):
+                left = ui.joystick(size=100, color='blue', throttle=0.05)
+                right = ui.joystick(size=100, color='green', throttle=0.05)
+            left.on_move(_on_left_move)
+            left.on_end(lambda: handle_joystick(0, 0, strafe=False))
+            right.on_move(_on_right_move)
+            right.on_end(lambda: handle_joystick(0, 0, strafe=True))
+            # Power slider directly under joysticks, centered
+            with ui.row().classes('w-full').style('justify-content: center; align-items: center; margin-top: 16px;'):
+                power_slider()
 
 if __name__ == "__main__":
     try:
