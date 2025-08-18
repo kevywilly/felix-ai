@@ -33,8 +33,8 @@ class VideoStream(Agent):
         self,
         video_input="csi://0",
         video_output="webrtc://@:8554/output",
-        video_input_width=1280,
-        video_input_height=720,
+        video_input_width=960,
+        video_input_height=540,
         video_input_framerate=60,
         **kwargs,
     ):

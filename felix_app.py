@@ -48,12 +48,9 @@ state.autodrive_active = autodrive.is_active
 def start_flask():
     ui.run(title='Robot Control', host="0.0.0.0", port=80, reload=False, )
 
-
 def start_video():
-    # args = {'video_input': 'csi://0', 'video_output': 'webrtc://@:8554/output', 'log_level': "info"}
     VideoStream().run()
     return
-
 
 async def main():
     await asyncio.gather(
@@ -65,7 +62,6 @@ async def main():
 def _apply_lock(x: float, y: float) -> tuple[float, float]:
     if state.xy_lock:
         return (0.0, y) if y > x else (x, 0.0)
-    
     return x, y
 
 def handle_joystick(x: float, y: float, strafe: bool = False, power: float | None = None):
@@ -100,8 +96,7 @@ def _on_right_move(e):
 
 @ui.refreshable
 def capture_buttons():
-    with ui.row().classes('w-full justify-center items-start mt-4').style('gap: 8px;'):
-        # Capture buttons (horizontal)
+    with ui.row().classes('capture-row justify-center items-start mt-4'):
         ui.button(f'Left {state.snapshots.get("left",0)}',
                 on_click=lambda: handle_snapshot('left')
                 ).style('flex: 1 1 0; min-width: 100px;')
@@ -112,10 +107,10 @@ def capture_buttons():
                 on_click=lambda: handle_snapshot('right')
                 ).style('flex: 1 1 0; min-width: 100px;')
         ui.button(f'Lock XY: {state.xy_lock}', on_click=lambda e: handle_xy_lock(e)).style('flex: 1 1 0; min-width: 100px;')
-
         ui.button(f'Auto Drive {"On" if state.autodrive_active else "Off"}',
                 on_click=lambda e: handle_autodrive(e)
                 ).style('flex: 1 1 0; min-width: 100px;')
+
 def power_slider():
     with ui.row().classes('w-full justify-center items-center mt-1 mb-4').style('gap: 12px;'):
         power_label = ui.label(f"Power: {state.power_percent}%").classes('text-sm')
@@ -128,81 +123,65 @@ def power_slider():
             .on_value_change(lambda e: _on_power_change(e.value))
 
 def video_frame():
-    with ui.column().classes('w-full'):
+    with ui.column().classes('video-column').style('width: 976px; max-width: 100vw; margin: 0 auto; padding: 0;'):
         ui.html('''
         <style>
         .video-wrap {
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            margin: 0 8px 0 0;
-            overflow: hidden;
+            width: 976px;
+            height: 556px;
+            max-width: 100vw;
+            max-height: 100vw;
             position: relative;
-            max-width: 100%;
-            height: auto;
             background: #000;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         .video-wrap iframe {
-            width: 100%;
-            height: 100%;
-            min-width: 0;
-            min-height: 0;
+            width: 976px;
+            height: 556px;
             border: 0;
             display: block;
             background: #000;
-            aspect-ratio: 16 / 9;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .capture-row {
+            max-width: 976px;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         </style>
-        ''').classes('w-full')
+        ''')
         with ui.element('div').classes('video-wrap'):
             ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen></iframe>')
-    capture_buttons()
+        capture_buttons()
 
 # New layout: video and buttons side by side, joysticks at bottom
 with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; width: 100%;'):
     with ui.element('div').classes('video-cell'):
         video_frame()
-    with ui.element('div').classes('controls-cell').style('min-width: 260px; max-width: 340px; height: 100%; display: flex; align-items: center; justify-content: center;'):
-        with ui.column().classes('w-full').style('align-items: center; justify-content: center; gap: 32px;'):
-            with ui.row().classes('joystick-row').style('width: 100%; justify-content: center; align-items: center; gap: 48px;'):
-                left = ui.joystick(size=100, color='blue', throttle=0.05)
-                right = ui.joystick(size=100, color='green', throttle=0.05)
-            left.on_move(_on_left_move)
-            left.on_end(lambda: handle_joystick(0, 0, strafe=False))
-            right.on_move(_on_right_move)
-            right.on_end(lambda: handle_joystick(0, 0, strafe=True))
-            power_slider()
+    with ui.element('div').classes('controls-cell').style('min-width: 260px; max-width: 340px; height: 100vh; display: flex; align-items: center; justify-content: center;'):
+        with ui.column().classes('w-full').style('align-items: center; justify-content: flex-start; gap: 16px; height: 100%;'):
+            # Center joysticks and slider both horizontally and vertically as a block
+            with ui.column().classes('joystick-slider-block').style('width: 100%; align-items: center; justify-content: center; gap: 20px;'):
+                with ui.row().classes('joystick-row').style('width: 100%; max-width: 260px; margin: 0 auto; justify-content: space-between; align-items: center; gap: 32px;'):
+                    left = ui.joystick(size=100, color='blue', throttle=0.05)
+                    right = ui.joystick(size=100, color='green', throttle=0.05)
+                left.on_move(_on_left_move)
+                left.on_end(lambda: handle_joystick(0, 0, strafe=False))
+                right.on_move(_on_right_move)
+                right.on_end(lambda: handle_joystick(0, 0, strafe=True))
+                # Power slider directly under joysticks, centered and aligned
+                with ui.row().classes('w-full').style('justify-content: center; align-items: center; margin-top: 8px;'):
+                    power_slider()
 
-# Add grid CSS for responsiveness and fix height issues
-ui.html('''
-<style>
-.main-grid {
-    width: 100%;
-    max-width: 100vw;
-    box-sizing: border-box;
-    align-items: flex-start;
-}
-.video-cell {
-    height: 100%;
-    min-height: 0;
-}
-.controls-cell {
-    min-width: 260px;
-    max-width: 340px;
-}
-@media (max-width: 900px) {
-    .main-grid {
-        grid-template-columns: 1fr;
-    }
-    .controls-cell {
-        max-width: 100vw;
-    }
-}
-</style>
-''')
-    
 if __name__ == "__main__":
     try:
-        
         video_thread = threading.Thread(target=start_video)
         video_thread.daemon = True
         video_thread.start()
@@ -211,9 +190,7 @@ if __name__ == "__main__":
         flask_thread.daemon = True
         flask_thread.start()
 
-
         asyncio.run(main())
     finally:
         video_thread.join()
         flask_thread.join()
-
