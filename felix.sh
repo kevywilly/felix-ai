@@ -1,2 +1,2 @@
 #!/bin/bash
-./felix_app.py
+./app.py

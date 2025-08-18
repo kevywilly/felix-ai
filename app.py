@@ -159,7 +159,20 @@ def video_frame():
             ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen style="width:960px;height:540px"></iframe>')
         capture_buttons()
 
-ui.add_head_html('<style>html, body { background: #006CA5 !important; color: #fff !important;}</style>')
+ui.add_head_html('''<style>
+html, body {
+    background: #006CA5 !important;
+    color: #fff !important;
+    margin: 0 !important;
+    padding: 8 !important;
+    overflow: hidden !important;
+    height: 100%;
+}
+.main-grid {
+    height: 100vh !important;
+    min-height: unset !important;
+}
+</style>''')
 # New layout: video and buttons side by side, joysticks at bottom
 with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 968px minmax(300px, 380px); gap: 16px; align-items: start; width: 100%; min-height: 100vh;'):
     with ui.element('div').classes('video-cell'):
