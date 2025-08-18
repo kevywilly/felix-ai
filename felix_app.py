@@ -131,7 +131,7 @@ def video_frame():
             height: 548px;
             max-width: 100vw;
             position: relative;
-            background: #000;
+            background: #333;
             overflow: hidden;
             margin: 0 auto;
             padding: 0;
@@ -142,7 +142,7 @@ def video_frame():
             height: 548px;
             border: 0;
             display: block;
-            background: #000;
+            background: #333;
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -159,17 +159,17 @@ def video_frame():
             ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen style="width:960px;height:540px"></iframe>')
         capture_buttons()
 
-#ui.add_head_html('<style>html, body { background: #000 !important; }</style>')
+ui.add_head_html('<style>html, body { background: #006CA5 !important; color: #fff !important;}</style>')
 # New layout: video and buttons side by side, joysticks at bottom
-with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 968px minmax(300px, 380px); gap: 16px; align-items: center; width: 100%; min-height: 100vh;'):
+with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 968px minmax(300px, 380px); gap: 16px; align-items: start; width: 100%; min-height: 100vh;'):
     with ui.element('div').classes('video-cell'):
         video_frame()
     with ui.element('div').classes('controls-cell').style('min-width: 300px; max-width: 380px; height: 100vh; display: flex; align-items: center; justify-content: center;'):
         with ui.column().classes('joystick-slider-block').style('width: 100%; align-items: center; justify-content: center; gap: 32px;'):
             # Joysticks in a horizontal row, centered
             with ui.row().classes('joystick-row').style('width: 100%; justify-content: center; align-items: center; gap: 48px;'):
-                left = ui.joystick(size=100, color='blue', throttle=0.05)
-                right = ui.joystick(size=100, color='green', throttle=0.05)
+                left = ui.joystick(size=100, color='blue', throttle=0.05).style('background: #3895D3; border-radius: 50%;')
+                right = ui.joystick(size=100, color='green', throttle=0.05).style('background: #3895D3; border-radius: 50%;')
             left.on_move(_on_left_move)
             left.on_end(lambda: handle_joystick(0, 0, strafe=False))
             right.on_move(_on_right_move)
