@@ -5,11 +5,7 @@ from lib.interfaces import Odometry, Twist, Vector3
 from lib.nodes.base import BaseNode
 
 import numpy as np
-
-if settings.ROBOT == "felixMac":
-    from lib.mock.rosmaster import MockRosmaster as Rosmaster
-else:
-    from lib.controllers.rosmaster import Rosmaster
+from lib.controllers.rosmaster import Rosmaster
 
 import time
 from felix.signals import Topics

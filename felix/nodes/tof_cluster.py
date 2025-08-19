@@ -9,6 +9,8 @@ from felix.signals import Topics
 
 i2c = board.I2C()
 
+print(i2c.scan())  # scan for the default address of VL53L0X
+
 def _get_sensor_instance(index: int) -> VL53L0X:
     try:
         sensor = VL53L0X(i2c, io_timeout_s = 1)

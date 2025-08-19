@@ -65,15 +65,6 @@ class VideoStream(Agent):
         filename = f"file://{filename}"
 
         self.video_output = VideoOutput("webrtc://@:8554/output", options={'codec': 'h264', 'save': filename, 'width': video_output_width, 'height': video_output_height})
-        #self.video_output = VideoOutput(
-        #    video_output, 
-        #    video_output_codec="h264", 
-        #    video_output_save=filename, 
-        #    width=video_output_width, 
-        #    height=video_output_height, 
-        #    **kwargs
-        #)
-
         self.video_source.add(self.on_video, threaded=False)
         self.video_source.add(self.video_output)
 

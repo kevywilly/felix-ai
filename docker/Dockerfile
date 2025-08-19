@@ -28,7 +28,8 @@ RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   adafruit-circuitpython-vl53l0x \
   jetson.GPIO \
   click \
-  nicegui 
+  nicegui \
+  smbus2
 
 FROM stage1 AS stage2
 

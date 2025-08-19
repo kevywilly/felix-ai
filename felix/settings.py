@@ -18,13 +18,9 @@ def join(loader, node):
 yaml.add_constructor('!join', join)
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join) 
 
-_ROBOT = os.getenv('ROBOT') if os.getenv('ROBOT') else 'felixV2'
+FELIX_CONFIG_FILE = "config.yml"
 
-logger.info(f'🤖 Robot = {_ROBOT}')
-
-if not(_ROBOT):
-    raise Exception("Environment variable ROBOT not set, use either ROBOT=felixV1 or ROBOT=felixV2")
-
+logger.info(f'🤖 Robot Config = {FELIX_CONFIG_FILE}')
 
 class TrainingConfig:
     def __init__(self, config):
@@ -100,8 +96,6 @@ class AppSettings:
         
         self.DEBUG: bool = config.get('debug')
 
-        self.ROBOT: str = _ROBOT
-
         self.USE_RESNET50 = True
 
         logger.info("⚙️ Loaded App Settings")
@@ -113,5 +107,6 @@ class AppSettings:
 
 
 path = Path(__file__).parent.absolute()
-settings = AppSettings(os.path.join(path,"..","config",f'{_ROBOT}.yml'))
+print(path)
+settings = AppSettings(f"/felix-ai/{FELIX_CONFIG_FILE}")
 
