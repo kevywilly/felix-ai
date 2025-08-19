@@ -7,7 +7,7 @@ Requires=docker.service
 Type=simple
 User=nano
 Environment="ROBOT=felixV2"
-ExecStart=/home/orin/projects/felix-ai/start-felix-ai.sh
+ExecStart=/home/orin/felix-ai/start-felix-ai.sh
 ExecStop=/usr/bin/docker stop felix-ai
 [Install]
 WantedBy=multi-user.target

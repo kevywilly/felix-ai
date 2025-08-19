@@ -20,7 +20,7 @@ autodrive:
   linear: 0.5
   angular: 1.4
 training:
-  data_root:          &root /Users/kevywilly/Projects/felix-ai/data
+  data_root:          &root /Users/kevywilly/felix-ai/data
   training_path:      !join [*root,/training]
   model_root:         !join [*root,/models]
   navigation_path:    !join [*root,/training/navigation]

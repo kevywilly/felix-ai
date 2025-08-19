@@ -1,5 +1,5 @@
 ```
-nano@nano1:~/projects/felix-ai$ cat ~/projects/felix/src/robot_argus_camera/src/robot_argus_camera/src/camera.cpp 
+nano@nano1:~/felix-ai$ cat ~/projects/felix/src/robot_argus_camera/src/robot_argus_camera/src/camera.cpp 
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -264,5 +264,5 @@ projection
 0.000000 389.708099 355.531485 0.000000
 0.000000 0.000000 1.000000 0.000000
  * 
-*/nano@nano1:~/projects/felix-ai$ 
+*/nano@nano1:~/felix-ai$ 
 ```

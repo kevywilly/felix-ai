@@ -56,7 +56,7 @@ if [ $ARCH = "aarch64" ]; then
 		--volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
 		--device /dev/gpiochip0 \
 		--device /dev/gpiochip1 \
-		--volume ${HOME}/projects/felix-ai:/felix-ai \
+		--volume ${HOME}/felix-ai:/felix-ai \
 		--volume ${HOME}/data:/data \
 		--device /dev/snd \
 		--device /dev/bus/usb \
