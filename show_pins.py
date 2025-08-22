@@ -9,7 +9,7 @@ d = {}
 data = [dict(zip(keys, p)) for p in JETSON_ORIN_NX_PIN_DEFS]
 
 for row in data:
-    print(f"BOARD: {row['BOARD']}\tBCM: {row['BCM']}\tTEGRA: {row['CVM']}\tpwm: {row['pwm_id']}")
+    print(f"LinuxGPIO: {row['linux_gpio']}\tLinuxGPIO: {row['linux_exported_gpio']}\tCHIP: {row['chip']}\tBOARD: {row['BOARD']}\tBCM: {row['BCM']}\tCVM: {row['CVM']}\tTEGRA: {row['TEGRA']}\tpwm: {row['pwm_id']}")
 
 
 """
@@ -36,3 +36,17 @@ board: 37, BCM: 26, TEGRA: GP38_SPI3_MOSI
 board: 38, BCM: 20, TEGRA: GP124
 board: 40, BCM: 21, TEGRA: GP123
 """
+"""
+gpioset $(gpiofind "PG.06")=0
+gpioset $(gpiofind "PH.00")=0
+
+gpioget $(gpiofind "PG.06")
+gpioget $(gpiofind "PH.00")
+
+gpiofind "PH.00"
+
+gpioset 0 43=1
+gpioget 0 43
+
+"""
+

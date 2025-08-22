@@ -13,3 +13,4 @@ streamlit
 streamlit-joystick
 pyzmq
 click
+smbus2>=0.4.3

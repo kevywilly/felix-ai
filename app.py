@@ -37,8 +37,7 @@ else:
     autodrive = BinaryObstacleAvoider()
 
 controller = Controller(frequency=30)
-#tof = TOFCluster(debug=False)
-
+tof = TOFCluster(debug=False)
 robot = Robot()
 
 state = AppState()
@@ -54,7 +53,7 @@ def start_video():
 
 async def main():
     await asyncio.gather(
-        # tof.spin(10),
+        tof.spin(10),
         controller.spin(), 
         autodrive.spin(20)
     )

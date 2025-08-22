@@ -14,7 +14,14 @@ COPY ./scripts/entrypoint.sh /
 COPY ./scripts/felix.sh /
 COPY ./scripts/train.sh /
 
-RUN apt-get update && apt-get -y install vim i2c-tools libzmq3-dev libzmq5 pkg-config\
+RUN apt-get update && apt-get -y install vim i2c-tools libzmq3-dev libzmq5 pkg-config 
+
+# apt install -y gstreamer1.0-nice
+# apt-get install -y avahi-utils libnss-mdns 
+# service avahi-daemon stop
+
+RUN apt install -y gstreamer1.0-nice
+RUN apt-get install -y avahi-utils libnss-mdns \
    && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
@@ -33,8 +40,9 @@ RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
 
 FROM stage1 AS stage2
 
-RUN echo "source /entrypoint.sh" >> /root/.bashrc
+#ENTRYPOINT ["/entrypoint.sh"]
 
+RUN echo "source /entrypoint.sh" >> /root/.bashrc
 
 # DOCKER_BUILDKIT=1 docker build -f Dockerfile -t felix:latest .
 # https://www.ros.org/reps/rep-2001.html#id25
