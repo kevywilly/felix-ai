@@ -1,5 +1,6 @@
 from abc import abstractmethod
 
+from felix.vision.roi_utils import apply_roi_crop
 from lib.interfaces import Measurement, Twist
 from lib.nodes.base import BaseNode
 import torch
@@ -13,9 +14,18 @@ import os
 from felix.signals import Topics
 from enum import Enum
 
-torch.hub.set_dir(settings.TRAINING.model_root)
+# Import your ModelType enum
+from felix.settings import ModelType
 
-use_resnet50 = settings.USE_RESNET50
+# Import the additional models
+from torchvision.models import (
+    resnet50, ResNet50_Weights,
+    alexnet, AlexNet_Weights,
+    mobilenet_v3_large, MobileNet_V3_Large_Weights,
+    mobilenet_v3_small, MobileNet_V3_Small_Weights
+)
+
+torch.hub.set_dir(settings.TRAINING.model_root)
 
 class Direction(str,Enum):
     NA="NA"
@@ -80,6 +90,37 @@ class AutoDriver(BaseNode):
         else:
             return Direction.LEFT
     
+    def _create_model(self, model_type: ModelType, num_targets: int):
+        """
+        Create and configure the model based on ModelType enum
+        """
+        if model_type == ModelType.resnet_50:
+            model = resnet50(weights=None)
+            num_ftrs = model.fc.in_features
+            model.fc = torch.nn.Linear(num_ftrs, num_targets)
+            
+        elif model_type == ModelType.mobilenet_large:
+            model = mobilenet_v3_large(weights=None)
+            # MobileNetV3 classifier is a Sequential with Linear layer at index 3
+            model.classifier[3] = torch.nn.Linear(model.classifier[3].in_features, num_targets)
+            
+        elif model_type == ModelType.mobilenet_small:
+            model = mobilenet_v3_small(weights=None)
+            # MobileNetV3 classifier is a Sequential with Linear layer at index 3
+            model.classifier[3] = torch.nn.Linear(model.classifier[3].in_features, num_targets)
+            
+        elif model_type == ModelType.alexnet:
+            model = alexnet(weights=None)
+            model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, num_targets)
+            
+        else:
+            # Unknown model type - fallback to default
+            self.logger.warning(f"Unknown model_type '{model_type}', falling back to MobileNet V3 Large")
+            model = mobilenet_v3_large(weights=None)
+            model.classifier[3] = torch.nn.Linear(model.classifier[3].in_features, num_targets)
+        
+        self.logger.info(f"Created model: {model_type.value}")
+        return model
     
     def spinner(self):
             
@@ -121,6 +162,10 @@ class ObstacleAvoider(AutoDriver):
 
     def __init__(self, 
                  model_file = settings.TRAINING.training_model_path, 
+                 model_type = settings.model_type,  # NEW: Accept model_type parameter
+                 use_roi = settings.use_roi,     # NEW: Enable ROI preprocessing
+                 roi_height_ratio = settings.roi_height_ratio,  # NEW: ROI parameters
+                 roi_vertical_offset = settings.roi_vertical_offset,
                  num_targets = settings.TRAINING.num_categories, 
                  linear = settings.autodrive_linear, 
                  angular = settings.autodrive_angular):
@@ -128,36 +173,69 @@ class ObstacleAvoider(AutoDriver):
         self.linear = linear
         self.angular = angular
         self.num_targets = num_targets
+        
+        # ROI Configuration
+        self.use_roi = use_roi
+        self.roi_height_ratio = roi_height_ratio
+        self.roi_vertical_offset = roi_vertical_offset
+        
+        # Determine model type - priority: parameter > settings > fallback
+        if model_type is not None:
+            self.model_type = model_type
+        elif hasattr(settings, 'MODEL_TYPE'):
+            self.model_type = settings.model_type
+        else:
+            # Default to MobileNet V3 Large for indoor robots (good balance of speed/accuracy)
+            self.model_type = ModelType.mobilenet_large
+            
+        self.logger.info(f"Using model type: {self.model_type}")
+        self.logger.info(f"ROI enabled: {self.use_roi}")
   
         if self.model_file_exists:
-            if use_resnet50:
-                self.model =  torchvision.models.resnet50(weights=None)
-                num_ftrs = self.model.fc.in_features
-                self.model.fc = torch.nn.Linear(num_ftrs, self.num_targets)
-            else:
-                self.model = torchvision.models.alexnet(weights=None)
-                self.model.classifier[6] = torch.nn.Linear(self.model.classifier[6].in_features, self.num_targets)
+            self.model = self._create_model(self.model_type, self.num_targets)
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)
 
         self._print_status()
 
     def _print_status(self):
-
         self.logger.info(
             f""" 
+            model type: {self.model_type}
             model file: {self.model_file}
             model exists: {self.model_file_exists}
             model loaded: {self.model_loaded}
             targets: {self.num_targets}
             linear: {self.linear}
             angular: {self.angular}
+            ROI enabled: {self.use_roi}
+            ROI height ratio: {self.roi_height_ratio}
+            ROI vertical offset: {self.roi_vertical_offset}
             """
         )
 
+    def _apply_roi_crop(self, image):
+        if not self.use_roi:
+            return image
+        
+        return apply_roi_crop(
+            image,
+            roi_height_ratio=self.roi_height_ratio,
+            roi_vertical_offset=self.roi_vertical_offset
+            # roi_width_ratio defaults to 1.0 in the central method
+        )
+
     def preprocess(self, sensor_image):
+        # Convert from BGR to RGB
         x = ImageUtils.bgr8_to_rgb8(sensor_image)
-        x = cv2.resize(x, (224,224), cv2.INTER_LINEAR)
+        
+        # Apply ROI cropping if enabled (CRITICAL for matching training!)
+        x = self._apply_roi_crop(x)
+        
+        # Resize to 224x224 (now resizing the ROI-cropped image)
+        x = cv2.resize(x, (224, 224), cv2.INTER_LINEAR)
+        
+        # Standard PyTorch preprocessing
         x = x.transpose((2, 0, 1))
         x = torch.from_numpy(x).float()
         x = self.normalize(x)
@@ -183,10 +261,10 @@ class BinaryObstacleAvoider(ObstacleAvoider):
     BLOCKED = 0
     FORWARD = 1
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(
-            model_file=settings.TRAINING.training_model_path,
-            num_targets=2 
+            num_targets=2,
+            **kwargs
         )
         self.status = self.NA
 
@@ -220,10 +298,10 @@ class TernaryObstacleAvoider(ObstacleAvoider):
     _left = 1
     _right = 2
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(
-            model_file=settings.TRAINING.training_model_path,
             num_targets=3,
+            **kwargs
         )
         self.direction = Direction.FORWARD
         
@@ -244,7 +322,6 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         right = float(predictions[self._right])
         
         tof = self.tof_prediction
-
 
         self.logger.info(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
 
@@ -267,5 +344,36 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         
         self.logger.debug("autodrive:", cmd)
         return cmd
-        
 
+# Convenience factory functions for easy instantiation
+def create_fast_binary_avoider(model_file=None, use_roi=True):
+    """Create a fast binary obstacle avoider using MobileNet for indoor use"""
+    return BinaryObstacleAvoider(
+        model_type=ModelType.mobilenet_large,
+        model_file=model_file or settings.TRAINING.training_model_path,
+        use_roi=use_roi
+    )
+
+def create_accurate_binary_avoider(model_file=None, use_roi=True):
+    """Create a high-accuracy binary obstacle avoider using ResNet-50"""
+    return BinaryObstacleAvoider(
+        model_type=ModelType.resnet_50,
+        model_file=model_file or settings.TRAINING.training_model_path,
+        use_roi=use_roi
+    )
+
+def create_fast_ternary_avoider(model_file=None, use_roi=True):
+    """Create a fast ternary obstacle avoider using MobileNet for indoor use"""
+    return TernaryObstacleAvoider(
+        model_type=ModelType.mobilenet_large,
+        model_file=model_file or settings.TRAINING.training_model_path,
+        use_roi=use_roi
+    )
+
+def create_accurate_ternary_avoider(model_file=None, use_roi=True):
+    """Create a high-accuracy ternary obstacle avoider using ResNet-50"""
+    return TernaryObstacleAvoider(
+        model_type=ModelType.resnet_50,
+        model_file=model_file or settings.TRAINING.training_model_path,
+        use_roi=use_roi
+    )

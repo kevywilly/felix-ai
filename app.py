@@ -27,10 +27,10 @@ class AppState:
 
 if settings.TRAINING.mode == "ternary":
     from felix.nodes.autodriver import TernaryObstacleAvoider
-    autodrive = TernaryObstacleAvoider()
+    autodrive = TernaryObstacleAvoider(model_type=settings.model_type, use_roi=settings.use_roi)
 else:
     from felix.nodes.autodriver import BinaryObstacleAvoider
-    autodrive = BinaryObstacleAvoider()
+    autodrive = BinaryObstacleAvoider(model_type=settings.model_type, use_roi=settings.use_roi)
 
 controller = Controller(frequency=30)
 #tof = TOFCluster(debug=False)

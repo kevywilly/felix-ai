@@ -6,6 +6,7 @@ from lib.vehicles import MecanumVehicle
 from felix.vision.sensors import CameraSensor
 import logging
 import yaml
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ yaml.SafeLoader.add_constructor(tag='!join', constructor=join)
 FELIX_CONFIG_FILE = "config.yml"
 
 logger.info(f'🤖 Robot Config = {FELIX_CONFIG_FILE}')
+
+class ModelType(str,Enum):
+    mobilenet_large = 'mobilenet_v3_large'
+    mobilenet_small = 'mobilenet_v3_small'
+    resnet_50 = 'resnet50'
+    alexnet = 'alexnet'
 
 class TrainingConfig:
     def __init__(self, config):
@@ -98,6 +105,11 @@ class AppSettings:
         self.DEBUG: bool = config.get('debug')
 
         self.USE_RESNET50 = True
+
+        self.model_type = ModelType(config.get('model_type', ModelType.resnet_50))
+        self.use_roi = True,             # NEW: Enable ROI
+        self.roi_height_ratio = 0.6      # NEW: Use bottom 60%
+        self.roi_vertical_offset = 0.4
 
         logger.info("⚙️ Loaded App Settings")
 

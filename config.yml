@@ -20,8 +20,8 @@ tof:
   use_in_autodrive: False
 capture_when_driving: True
 autodrive:
-  linear: 0.4
-  angular: 1.2
+  linear: 0.32
+  angular: 1.0
 training:
   mode: ternary
   data_root:          &root /data/felix
