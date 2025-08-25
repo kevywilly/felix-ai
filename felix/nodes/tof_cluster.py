@@ -1,9 +1,5 @@
 
 import time
-import board
-from digitalio import DigitalInOut
-from adafruit_vl53l0x import VL53L0X
-
 from felix.signals import Topics
 from felix.vision.tof import TOFArray
 from lib.interfaces import Measurement

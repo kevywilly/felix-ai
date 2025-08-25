@@ -143,18 +143,19 @@ sudo usermod -aG docker $USER
 ```
 sudo nvpmodel -q
 sudo nvpmodel -m 2 MAXN_SUPER
-
 ```
 
 # GPIO - setup
 
+## Upgrade Jetson.GPIO
+
 ```
 pip install Jetson.GPIO --upgrade
+```
 
+## Enable GPIO Pins as Bi-Directional
+```
 git clone git@github.com:kevywilly/jetson-orin-gpio-patch.git
-```
-
-```
 cd jetson-orin-gpio-patch
 dtc -O dtb -o pin7_12_32_33_as_gpio.dtbo pin7_12_32_33_as_gpio.dts
 sudo cp pin7_12_32_33_as_gpio.dtbo /boot

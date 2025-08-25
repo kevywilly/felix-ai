@@ -17,6 +17,7 @@ peripherals:
       curve_factor: 0.5
 tof:
   threshold: 200
+  use_in_autodrive: False
 capture_when_driving: True
 autodrive:
   linear: 0.4

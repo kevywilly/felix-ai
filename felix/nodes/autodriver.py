@@ -13,8 +13,6 @@ import os
 from felix.signals import Topics
 from enum import Enum
 
-
-
 torch.hub.set_dir(settings.TRAINING.model_root)
 
 use_resnet50 = settings.USE_RESNET50
@@ -37,6 +35,7 @@ class AutoDriver(BaseNode):
         self.model_loaded = False
         self.is_active = False
         self.raw_image = None
+        self.use_tof = settings.USE_TOF_IN_AUTODRIVE or False
         self.tof = {}
         
         Topics.raw_image.connect(self._on_raw_image)
@@ -70,6 +69,8 @@ class AutoDriver(BaseNode):
     
     @property
     def tof_prediction(self):
+        if not self.use_tof:
+            return Direction.FORWARD
         left = self.tof.get(0, 0)
         right = self.tof.get(1, 0)
         if left > 200 and right > 200:

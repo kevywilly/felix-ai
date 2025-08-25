@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import logging 
 import sys
-
-from lib.interfaces import Twist
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
-import os
 import time
 from dataclasses import dataclass
 from nicegui import ui
@@ -18,7 +14,7 @@ from felix.nodes import (
     Controller,
 )
 from felix.nodes.robot import Robot
-from felix.nodes.tof_cluster import TOFCluster
+#from felix.nodes.tof_cluster import TOFCluster
 from felix.settings import settings
 from felix.signals import Topics
 
@@ -37,7 +33,7 @@ else:
     autodrive = BinaryObstacleAvoider()
 
 controller = Controller(frequency=30)
-tof = TOFCluster(debug=False)
+#tof = TOFCluster(debug=False)
 robot = Robot()
 
 state = AppState()
@@ -53,7 +49,7 @@ def start_video():
 
 async def main():
     await asyncio.gather(
-        tof.spin(10),
+        #tof.spin(10),
         controller.spin(), 
         autodrive.spin(20)
     )

@@ -12,13 +12,14 @@ class TOFArray:
         self.logger.setLevel(logging.INFO)
         self.xshut = [
             DigitalInOut(board.D12),  # GP113_PWM7 (32)
-            DigitalInOut(board.D13),  # GP115 (33)
+            DigitalInOut(board.D4),  # GP115 (33)
         ]
         self.i2c = board.I2C()
-        self.logger.info(f"TOF sensors found {self.i2c.scan()}")
+        print(f"🚀 TOF sensors found {self.i2c.scan()}")
         atexit.register(self.shutdown)
-        self.logger.info("Initializing TOF sensors")
+        print("Initializing TOF sensors")
         self.sensors = self.init_sensors()
+        print(f"{len(self.sensors)} TOF sensors initialized")
 
     def get_readings(self) -> list[int]:
         readings = []
@@ -31,30 +32,35 @@ class TOFArray:
             sensor.start_continuous()
 
     def init_sensors(self) -> list[VL53L0X]:
+        try:
+            time.sleep(0.05)
 
-        time.sleep(0.05)
+            sensors = []
 
-        sensors = []
+            for power_pin in self.xshut:
+                power_pin.switch_to_output(value=False)
+                power_pin.value = False
+                time.sleep(0.02)
 
-        for power_pin in self.xshut:
-            power_pin.switch_to_output(value=False)
-            power_pin.value = False
-            time.sleep(0.02)
+            for i, power_pin in enumerate(self.xshut):
+                power_pin.value = True
+                time.sleep(0.02)
+                sensor = VL53L0X(self.i2c, io_timeout_s = 1)
+                if i < len(self.xshut) - 1:
+                    time.sleep(0.02)
+                    sensor.set_address(i + 0x30)
+                    time.sleep(0.02)
 
-        for i, power_pin in enumerate(self.xshut):
-            power_pin.value = True
-            time.sleep(0.02)
-            sensor = VL53L0X(self.i2c, io_timeout_s = 1)
-            time.sleep(0.02)
-            sensor.set_address(i + 0x30)
-            time.sleep(0.02)
+                # sensor.measurement_timing_budget = 2000000
+                # sensor.measurement_timing_budget = 100000
+                
+                sensors.insert(i, sensor)
 
-            # sensor.measurement_timing_budget = 2000000
-            # sensor.measurement_timing_budget = 100000
-            
-            sensors.insert(i, sensor)
-
-        return sensors
+            return sensors
+        except Exception as e:
+            self.logger.error(f"Error initializing sensors: {e}")
+            self.i2c.deinit()
+            raise e
 
     def shutdown(self):
         try:
