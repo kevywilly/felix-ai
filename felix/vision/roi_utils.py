@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 
-def apply_roi_crop(image, roi_height_ratio=0.6, roi_width_ratio=1.0, roi_vertical_offset=0.4):
+def apply_roi_crop(image, roi_height_ratio,  roi_vertical_offset, roi_width_ratio):
     """
     Apply ROI cropping to focus on ground-level obstacles.
     
@@ -80,7 +80,7 @@ class ROITransform:
     """
     Transform for ROI cropping compatible with torchvision transforms.
     """
-    def __init__(self, roi_height_ratio=0.6, roi_width_ratio=1.0, roi_vertical_offset=0.4):
+    def __init__(self, roi_height_ratio, roi_width_ratio, roi_vertical_offset):
         self.roi_height_ratio = roi_height_ratio
         self.roi_width_ratio = roi_width_ratio
         self.roi_vertical_offset = roi_vertical_offset
@@ -88,75 +88,7 @@ class ROITransform:
     def __call__(self, image):
         return apply_roi_crop(
             image, 
-            self.roi_height_ratio, 
-            self.roi_width_ratio, 
-            self.roi_vertical_offset
+            roi_height_ratio=self.roi_height_ratio, 
+            roi_width_ratio=self.roi_width_ratio, 
+            roi_vertical_offset=self.roi_vertical_offset
         )
-
-
-# Predefined ROI configurations for common use cases
-ROI_CONFIGS = {
-    'ground_robot': {
-        'roi_height_ratio': 0.6,
-        'roi_width_ratio': 1.0,
-        'roi_vertical_offset': 0.4
-    },
-    'indoor_furniture': {
-        'roi_height_ratio': 0.65,
-        'roi_width_ratio': 1.0,
-        'roi_vertical_offset': 0.35
-    },
-    'outdoor_ground': {
-        'roi_height_ratio': 0.7,
-        'roi_width_ratio': 1.0,
-        'roi_vertical_offset': 0.3
-    },
-    'horizon_focus': {
-        'roi_height_ratio': 0.6,
-        'roi_width_ratio': 1.0,
-        'roi_vertical_offset': 0.2
-    }
-}
-
-
-def get_roi_config(config_name='ground_robot'):
-    """
-    Get predefined ROI configuration.
-    
-    Args:
-        config_name: One of 'ground_robot', 'indoor_furniture', 'outdoor_ground', 'horizon_focus'
-        
-    Returns:
-        Dictionary with ROI parameters
-    """
-    return ROI_CONFIGS.get(config_name, ROI_CONFIGS['ground_robot'])
-
-
-# Example usage and testing
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    
-    def test_roi_consistency():
-        """Test that PIL and numpy processing give identical results"""
-        # Create a test image
-        test_array = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
-        test_pil = Image.fromarray(test_array)
-        
-        # Apply ROI to both
-        roi_array = apply_roi_crop(test_array)
-        roi_pil = apply_roi_crop(test_pil)
-        roi_pil_array = np.array(roi_pil)
-        
-        # Check if results are identical
-        if np.array_equal(roi_array, roi_pil_array):
-            print("✓ ROI processing is consistent between PIL and numpy")
-        else:
-            print("✗ ROI processing differs between PIL and numpy")
-            print(f"Array shape: {roi_array.shape}")
-            print(f"PIL->Array shape: {roi_pil_array.shape}")
-    
-    test_roi_consistency()
-    
-    # Test different configurations
-    for config_name, config in ROI_CONFIGS.items():
-        print(f"{config_name}: {config}")

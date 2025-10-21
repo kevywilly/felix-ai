@@ -1,6 +1,6 @@
 import os
 from felix.training.obstacle_trainer import Trainer
-from felix.vision.roi_utils import ROITransform, apply_roi_crop
+from felix.vision.roi_utils import ROITransform
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -93,8 +93,8 @@ class ROIObstacleTrainer(Trainer):
         else:
             return ROITransform(
                 roi_height_ratio=self.roi_height_ratio,
-                roi_vertical_offset=self.roi_vertical_offset
-                # roi_width_ratio defaults to 1.0 in the central method
+                roi_vertical_offset=self.roi_vertical_offset,
+                roi_width_ratio=self.roi_width_ratio
             )
 
     def _get_dataset(self):

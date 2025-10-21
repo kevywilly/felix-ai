@@ -22,7 +22,8 @@ logger.addHandler(handler)
 @click.option("--iterations", type=int, default=1, help="Number of iterations")
 @click.option("--threshold", type=float, default=0.98, help="Accuracy threshold for early stopping")
 @click.option("--start-clean", is_flag=True, help="Start with a clean model") 
-def cli(epochs, pct_low_light, pct_noise, lr, test_pct, iterations, threshold, start_clean):
+@click.option("--roi-type", type=click.Choice(['ground', 'none']), default='none', help="Type of ROI trainer to use")
+def cli(epochs, pct_low_light, pct_noise, lr, test_pct, iterations, threshold, start_clean, roi_type):
     """
     This script trains Felix's Brain.
     """
@@ -38,6 +39,7 @@ def cli(epochs, pct_low_light, pct_noise, lr, test_pct, iterations, threshold, s
         move_file_with_timestamp(settings.TRAINING.training_model_path)
 
     trainer = ROIObstacleTrainer(
+        roi_type=roi_type,
         images_path=settings.TRAINING.training_images_path,
         model_file=settings.TRAINING.training_model_path,
         model_type=settings.model_type, 

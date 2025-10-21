@@ -61,7 +61,9 @@ if [ $ARCH = "aarch64" ]; then
 		--device /dev/snd \
 		--device /dev/bus/usb \
 		--device /dev/myserial \
+		--device /dev/mypico \
 		--device /dev/ttyUSB0 \
+		--device /dev/ttyACM0 \
 		--device /dev/i2c-1 \
 		--device /dev/i2c-2 \
 		--device /dev/i2c-7 \

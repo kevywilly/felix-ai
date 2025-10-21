@@ -11,10 +11,10 @@ from felix.motion.joystick import Joystick, JoystickRequest
 from felix.agents.video_agent import VideoStream
 
 from felix.nodes import (
-    Controller,
+    Controller, PicoSensors
 )
 from felix.nodes.robot import Robot
-#from felix.nodes.tof_cluster import TOFCluster
+from felix.nodes.pico import PicoSensors
 from felix.settings import settings
 from felix.signals import Topics
 
@@ -33,7 +33,7 @@ else:
     autodrive = BinaryObstacleAvoider(model_type=settings.model_type, use_roi=settings.use_roi)
 
 controller = Controller(frequency=30)
-#tof = TOFCluster(debug=False)
+pico = PicoSensors()
 robot = Robot()
 
 state = AppState()
@@ -49,7 +49,7 @@ def start_video():
 
 async def main():
     await asyncio.gather(
-        #tof.spin(10),
+        pico.spin(10),
         controller.spin(), 
         autodrive.spin(20)
     )

@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from dataclasses import dataclass
 from typing import Dict, Optional
 import numpy as np
 from numpy import ndarray
@@ -225,3 +226,35 @@ class Odometry(DataModel):
     
     def __repr__(self) -> str:
         return f"Odometry(header={self.header}, child_frame_id={self.child_frame_id}, twist={self.twist}, pose={self.pose})"
+
+
+@dataclass
+class SensorReading:
+    id: int
+    type: str
+    value: float
+    ts: int
+
+    def from_json(data):
+        return SensorReading(
+            id=data.get("id"),
+            type=data.get("type"),
+            value=data.get("value"),
+            ts=data.get("ts", int(time.time()))
+        )
+    
+    def __str__(self):
+        return (f"SensorReading(id={self.id}, type={self.type}, "
+                f"value={self.value}, ts={self.ts})")
+    
+@dataclass
+class Prediction:
+    source: str
+    left: float
+    right: float
+    forward: float
+    ts: int = lambda: int(time.time())
+
+    def __str__(self):
+        return (f"Prediction(source={self.source}, left={self.left}, "
+                f"right={self.right}, forward={self.forward}, ts={self.ts})")

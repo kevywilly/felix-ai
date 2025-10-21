@@ -30,6 +30,11 @@ training:
   navigation_path:    !join [*root,/training/navigation]
   tags_path:          !join [*root,/training/tags]
   driving_data_path:  !join [*root,/training/driving]
+model:
+  type: resnet50
+  use_roi: True
+  roi_height_ratio: 0.6
+  roi_vertical_offset: 0.4
 camera:
   sensor_mode: 3
   fov: 160

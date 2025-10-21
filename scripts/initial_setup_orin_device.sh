@@ -133,3 +133,11 @@ sudo /opt/nvidia/jetson-io/jetson-io.py
 (set csi camera to imx219-c)
 (choose overlay for pins 7,12,32,33 as gpio)
 
+# pico sensor
+
+echo 'KERNEL=="ttyACM*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000a", MODE:="0777", SYMLINK+="mypico"' | sudo tee /etc/udev/rules.d/99-mypico.rules
+
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+# Bus 001 Device 006: ID 239a:80f4 Adafruit Pico

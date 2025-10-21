@@ -1,7 +1,8 @@
 from abc import abstractmethod
+from typing import Any
 
 from felix.vision.roi_utils import apply_roi_crop
-from lib.interfaces import Measurement, Twist
+from lib.interfaces import Measurement, Prediction, SensorReading, Twist
 from lib.nodes.base import BaseNode
 import torch
 import torchvision
@@ -27,6 +28,8 @@ from torchvision.models import (
 
 torch.hub.set_dir(settings.TRAINING.model_root)
 
+DEBUG=True
+
 class Direction(str,Enum):
     NA="NA"
     FORWARD="FORWARD"
@@ -45,17 +48,18 @@ class AutoDriver(BaseNode):
         self.model_loaded = False
         self.is_active = False
         self.raw_image = None
-        self.use_tof = settings.USE_TOF_IN_AUTODRIVE or False
         self.tof = {}
         
         Topics.raw_image.connect(self._on_raw_image)
         Topics.autodrive.connect(self._on_autodrive)
         Topics.stop.connect(self._on_stop)
-        Topics.tof.connect(self._on_tof)
+        Topics.pico_sensors.connect(self._on_pico_sensors)
 
         self.logger.info(f"AutoDriver using device: {self.device}")
 
-    def _on_tof(self, sender, payload: Measurement):
+    def _on_pico_sensors(self, sender, payload: SensorReading):
+        if payload.type != "tof":
+            return
         self.tof[payload.id] = payload.value
         self.logger.debug(f"tof: {payload.id} = {payload.value}")
 
@@ -76,16 +80,19 @@ class AutoDriver(BaseNode):
     @property
     def model_file_exists(self) -> bool:
         return os.path.isfile(self.model_file)
-    
+
     @property
     def tof_prediction(self):
-        if not self.use_tof:
+        #return Direction.FORWARD
+        threshhold = 180
+
+        left = self.tof.get(0)
+        right = self.tof.get(1)
+        
+        if (left >= threshhold and right >= threshhold) or (left == right):
             return Direction.FORWARD
-        left = self.tof.get(0, 0)
-        right = self.tof.get(1, 0)
-        if left > 200 and right > 200:
-            return Direction.FORWARD
-        elif left < right:
+
+        if left < right:
             return Direction.RIGHT
         else:
             return Direction.LEFT
@@ -125,6 +132,8 @@ class AutoDriver(BaseNode):
     def spinner(self):
             
         if self.is_active and self.raw_image is not None:
+            if DEBUG:
+                print("Autodrive active, making prediction...")
             try:
                 cmd = self.predict(self.raw_image)
                 self.logger.info(f"AutoDrive: {cmd}")
@@ -221,7 +230,8 @@ class ObstacleAvoider(AutoDriver):
         return apply_roi_crop(
             image,
             roi_height_ratio=self.roi_height_ratio,
-            roi_vertical_offset=self.roi_vertical_offset
+            roi_vertical_offset=self.roi_vertical_offset,
+            roi_width_ratio=1.0
             # roi_width_ratio defaults to 1.0 in the central method
         )
 
@@ -243,7 +253,7 @@ class ObstacleAvoider(AutoDriver):
         x = x[None, ...]
         return x
 
-    def get_predictions(self, input):
+    def get_predictions(self, input) -> Any | None:
         if not self.model_loaded:
             return None
         
@@ -306,6 +316,10 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         self.direction = Direction.FORWARD
         
     def predict(self, input) -> Twist:
+
+        if DEBUG:
+            print("Making ternary prediction...")
+
         cmd = Twist()
 
         if not self.is_active:
@@ -323,7 +337,7 @@ class TernaryObstacleAvoider(ObstacleAvoider):
         
         tof = self.tof_prediction
 
-        self.logger.info(f"l: {left}, f: {forward}, r:{right}, tof: {self.tof_prediction}")
+        self.logger.info(f"l: {left}, f: {forward}, r:{right}, ir: {self.tof_prediction}")
 
         if forward > 0.5:
             self.direction = Direction.FORWARD

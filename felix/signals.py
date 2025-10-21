@@ -9,3 +9,6 @@ class Topics:
     stop = signal('stop')
     image_tensor = signal('image_tensor')
     tof = signal('tof')
+    ir = signal('ir')
+    prediction = signal('prediction')
+    pico_sensors = signal('pico_sensors')

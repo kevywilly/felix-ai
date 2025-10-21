@@ -29,6 +29,11 @@ class ModelType(str,Enum):
     resnet_50 = 'resnet50'
     alexnet = 'alexnet'
 
+class TrainingCategories(int,Enum):
+    binary = 2
+    ternary = 3
+    mecanum = 5
+
 class TrainingConfig:
     def __init__(self, config):
         self.mode = config.get('training').get('mode')
@@ -38,7 +43,7 @@ class TrainingConfig:
         self.navigation_path = config.get('training').get('navigation_path')
         self.model_root = config.get('training').get('model_root')
         self.driving_data_path = config.get('training').get('driving_data_path')
-        self.num_categories =3 if self.mode == 'ternary' else 2
+        self.num_categories = TrainingCategories[self.mode].value
 
     @property
     def training_model_path(self):
@@ -106,17 +111,32 @@ class AppSettings:
 
         self.USE_RESNET50 = True
 
-        self.model_type = ModelType(config.get('model_type', ModelType.resnet_50))
-        self.use_roi = True,             # NEW: Enable ROI
-        self.roi_height_ratio = 0.6      # NEW: Use bottom 60%
-        self.roi_vertical_offset = 0.4
+        model_settings = config.get('model',{})
+        self.model_type = ModelType(model_settings.get('type', ModelType.resnet_50))
+        self.use_roi = model_settings.get('use_roi', True)
+        self.roi_height_ratio = model_settings.get('roi_height_ratio', 0.6)
+        self.roi_vertical_offset = model_settings.get('roi_vertical_offset', 0.4)
 
         logger.info("⚙️ Loaded App Settings")
 
     
     def load_config(self, config_file) -> Dict:
-        with open(config_file,'r') as f:
-            return yaml.safe_load(f)
+        try:
+            with open(config_file,'r') as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            with open(os.path.join("config.yml"),'r') as f:
+                return yaml.safe_load(f)
+    @property
+    def training_labels(self):
+        if self.TRAINING.mode == "binary":
+            return ['clear','obstacle']
+        elif self.TRAINING.mode == "ternary":
+            return ['left','forward','right']
+        elif self.TRAINING.mode == "mecanum":
+            return ['sleft','left','forward','right','sright']
+        else:
+            raise ValueError(f"Unknown training mode: {self.TRAINING.mode}")
 
 
 path = Path(__file__).parent.absolute()
