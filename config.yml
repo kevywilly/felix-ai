@@ -18,7 +18,7 @@ peripherals:
 tof:
   threshold: 200
   use_in_autodrive: False
-capture_when_driving: True
+nav_capture_frequency_seconds: 0.5
 autodrive:
   linear: 0.32
   angular: 1.0
@@ -35,6 +35,7 @@ model:
   use_roi: True
   roi_height_ratio: 0.6
   roi_vertical_offset: 0.4
+  roi_horizontal_offset: 1.0
 camera:
   sensor_mode: 3
   fov: 160

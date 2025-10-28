@@ -1,30 +1,51 @@
 #!/usr/bin/python3
-from felix.training.obstacle_trainer import ObstacleTrainer
+from felix.training.roi_trainer import ROIObstacleTrainer
 from felix.settings import settings
-import argparse
 from felix.utils.file import move_file_with_timestamp
-from logging import getLogger
+import logging
+import click
 
-logger = getLogger("train")
+logger = logging.getLogger("train")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="This scripts trains Felix's Brain.")
-    parser.add_argument("epochs", type=int, help='Number of epochs', default=50)
-    parser.add_argument("--pct-low-light", type=float, help='Low light sample percentage', default=0.2)
-    parser.add_argument("--pct-noise", type=float, help='Noise sample percentage', default=0.2)
-    parser.add_argument("--iterations", type=int, help='Number of iterations', default=1)
-    parser.add_argument("--start-clean", type=bool, help="Start with a clean model", default=False)
-    
-    args = parser.parse_args()
+@click.command()
+@click.argument("epochs", type=int, default=5)
+@click.option(
+    "--pct-low-light", type=float, default=0.2, help="Low light sample percentage"
+)
+@click.option("--pct-noise", type=float, default=0.2, help="Noise sample percentage")
+@click.option("--lr", type=float, default=0.001, help="Learning rate")
+@click.option("--test-pct", type=int, default=30, help="Percentage of data for testing")
+@click.option("--iterations", type=int, default=1, help="Number of iterations")
+@click.option(
+    "--threshold",
+    type=float,
+    default=0.98,
+    help="Accuracy threshold for early stopping",
+)
+@click.option("--start-clean", is_flag=True, help="Start with a clean model")
+@click.option("--train-nav", is_flag=True, help="Train navigation model")
+def cli(
+    epochs,
+    pct_low_light,
+    pct_noise,
+    lr,
+    test_pct,
+    iterations,
+    threshold,
+    start_clean,
+    train_nav
+):
+    """
+    This script trains Felix's Brain.
+    """
 
-    epochs = args.epochs
-    pct_noise = args.pct_noise
-    pct_low_light = args.pct_low_light
-    iterations = args.iterations
-    start_clean = args.start_clean
-
-    logger.info(f"Starting trainer with args: {vars(args)}")
+    logger.info(f"Starting trainer with args: {locals()}")
 
     if settings.TRAINING.mode == "ternary":
         target_flips = [0, 2, 1]
@@ -32,18 +53,31 @@ if __name__ == "__main__":
         target_flips = None
 
     if start_clean:
-        move_file_with_timestamp(settings.TRAINING.training_model_path)
+        if train_nav:
+            move_file_with_timestamp(settings.nav_model_file)
+        else:
+            move_file_with_timestamp(settings.model_file)
 
-    trainer = ObstacleTrainer(
+    
+    trainer = ROIObstacleTrainer(
         epochs=epochs,
-        images_path=settings.TRAINING.training_images_path,
-        random_flip=True,
-        target_flips=target_flips,
-        model_file=settings.TRAINING.training_model_path,
+        lr=lr,
+        test_pct=test_pct,
+        early_stop_threshold=threshold,
+        pct_low_light=pct_low_light,
         pct_noise=pct_noise,
-        pct_low_light=pct_low_light
+        train_nav=train_nav,
     )
 
     for i in range(iterations):
-        logger.info(f"Iteration {i+1} of {iterations}")
-        trainer.train()
+        logger.info(f"Iteration {i + 1} of {iterations}")
+        result = trainer.train()
+        if result >= threshold:
+            logger.info(
+                f"Reached accuracy threshold of {threshold}. Stopping training."
+            )
+            break
+
+
+if __name__ == "__main__":
+    cli()

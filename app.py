@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import logging 
 import sys
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 import time
 from dataclasses import dataclass
 from nicegui import ui
@@ -14,9 +13,10 @@ from felix.nodes import (
     Controller, PicoSensors
 )
 from felix.nodes.robot import Robot
-from felix.nodes.pico import PicoSensors
 from felix.settings import settings
 from felix.signals import Topics
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 @dataclass
 class AppState:
@@ -24,13 +24,17 @@ class AppState:
     xy_lock: bool = False
     autodrive_active: bool = False
     snapshots = {"left": 0, "forward": 0, "right": 0 }
+    nav_capture: bool = False
 
-if settings.TRAINING.mode == "ternary":
-    from felix.nodes.autodriver import TernaryObstacleAvoider
-    autodrive = TernaryObstacleAvoider(model_type=settings.model_type, use_roi=settings.use_roi)
-else:
-    from felix.nodes.autodriver import BinaryObstacleAvoider
-    autodrive = BinaryObstacleAvoider(model_type=settings.model_type, use_roi=settings.use_roi)
+from felix.nodes.autodriver import TernaryObstacleAvoider
+autodrive = TernaryObstacleAvoider()
+
+# if settings.TRAINING.mode == "ternary":
+#    from felix.nodes.autodriver import TernaryObstacleAvoider
+#    autodrive = TernaryObstacleAvoider()
+#else:
+#    from felix.nodes.autodriver import BinaryObstacleAvoider
+#    autodrive = BinaryObstacleAvoider()
 
 controller = Controller(frequency=30)
 pico = PicoSensors()
@@ -54,15 +58,20 @@ async def main():
         autodrive.spin(20)
     )
 
-def _apply_lock(x: float, y: float) -> tuple[float, float]:
+def _apply_lock(x: float, y: float, strafe: bool) -> tuple[float, float, bool]:
     if state.xy_lock:
-        return (0.0, y) if y > x else (x, 0.0)
-    return x, y
+        print(x,y,strafe)
+        if strafe:
+            return (x,0.0, False)
+        else:
+            return (0.0, y, False)
+        # return (0.0, y) if abs(y) > abs(x) else (x, 0.0)
+    return x, y, strafe
 
 def handle_joystick(x: float, y: float, strafe: bool = False, power: float | None = None):
-    x, y = _apply_lock(x, y)
+    x, y, use_strafe = _apply_lock(x, y, strafe)
     p = (state.power_percent / 100.0) if power is None else power
-    req = JoystickRequest(x=x, y=y, strafe=strafe, power=p)
+    req = JoystickRequest(x=x, y=y, strafe=use_strafe, power=p)
     twist = Joystick.get_twist(req)
     Topics.cmd_vel.send("felix", payload=twist)
 
@@ -80,8 +89,14 @@ def handle_autodrive(e):
         controller.stop()
     capture_buttons.refresh()
 
+def handle_nav_capture(e):
+    state.nav_capture = not state.nav_capture
+    Topics.nav_capture.send("felix", payload=state.nav_capture)
+    capture_buttons.refresh()
+
 def handle_xy_lock(e):
     state.xy_lock = not state.xy_lock
+    capture_buttons.refresh()
 
 def _on_left_move(e):
     handle_joystick(e.x, e.y, strafe=False)
@@ -101,9 +116,14 @@ def capture_buttons():
         ui.button(f'Right {state.snapshots.get("right",0)}',
                 on_click=lambda: handle_snapshot('right')
                 ).style('flex: 1 1 0; min-width: 100px;')
-        ui.button(f'Lock XY: {state.xy_lock}', on_click=lambda e: handle_xy_lock(e)).style('flex: 1 1 0; min-width: 100px;')
-        ui.button(f'Auto Drive {"On" if state.autodrive_active else "Off"}',
+        ui.button(f'LockXY {"On" if state.xy_lock else "Off"}', 
+                  on_click=lambda e: handle_xy_lock(e)
+                  ).style('flex: 1 1 0; min-width: 100px;')
+        ui.button(f'AutoDrive {"On" if state.autodrive_active else "Off"}',
                 on_click=lambda e: handle_autodrive(e)
+                ).style('flex: 1 1 0; min-width: 100px;')
+        ui.button(f'NavCap {"On" if state.nav_capture else "Off"}',
+                on_click=lambda e: handle_nav_capture(e)
                 ).style('flex: 1 1 0; min-width: 100px;')
 
 def power_slider():

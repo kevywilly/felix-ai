@@ -56,11 +56,12 @@ class Robot(BaseNode):
 
     def get_stream(self):
         while True:
-            # ret, buffer = cv2.imencode('.jpg', frame)
             try:
-                yield (
-                    b"--frame\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n" + self.get_image() + b"\r\n"
-                )  # concat frame one by one and show result
+                image = self.get_image()
+                if image is not None:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + image + b"\r\n"
+                    )
             except Exception:
                 pass

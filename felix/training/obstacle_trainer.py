@@ -1,60 +1,25 @@
-import os
 
+
+
+import os
+from felix.training.base import Trainer
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-import torchvision.models as models
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset
 from torchvision.models import alexnet, AlexNet_Weights, resnet50, ResNet50_Weights
-from torchvision.datasets import ImageFolder
 
 from felix.settings import settings
 from felix.training.datasets import CustomImageFolder
 from felix.training.transformations import RandomLowLightTransform, AddGaussianNoise
-from abc import ABC, abstractmethod
 import logging
 
-logger = logging.getLogger("trainer")
 
-if not os.path.exists(settings.TRAINING.model_root):
-    os.makedirs(settings.TRAINING.model_root)
-
-torch.hub.set_dir(settings.TRAINING.model_root)
-
-use_resnet50 = settings.USE_RESNET50
-
-    
-class Trainer(ABC):
-
-    def __init__(self, model_file, test_pct=50, epochs=50, lr=0.001, momentum=0.9):
-        self.test_pct = test_pct
-        self.lr = lr
-        self.test_pct = test_pct
-        self.epochs = epochs
-        self.momentum = momentum
-        self.model_file = model_file
-
-        logger.info(
-            f"""
-            Loaded Trainer:
-            \tepochs: {self.epochs}
-            \tlr: {self.lr}
-            \tmomentum: {self.momentum}
-            \ttest-pct: {self.test_pct}
-            """
-        )
-
-
-    @abstractmethod
-    def train(self):
-        pass
-
+logger = logging.getLogger(__name__)
 
 class ObstacleTrainer(Trainer):
     def __init__(
         self, 
-        images_path, 
         random_flip: bool = False, 
         target_flips=None, 
         pct_low_light=0.2,
@@ -62,9 +27,6 @@ class ObstacleTrainer(Trainer):
         *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.images_path = images_path
-        self.categories = os.listdir(images_path)
-        self.num_categories = len(self.categories)
         self.random_flip = random_flip
         self.target_flips = target_flips
         self.pct_low_light = pct_low_light
@@ -72,10 +34,10 @@ class ObstacleTrainer(Trainer):
 
         logger.info(
             f"Obstacle Trainer Loaded\n"
-            f"\tnum_categories: {self.num_categories}\n"
-            f"\timages_path: {self.images_path}\n"
             f"\trandom_flip: {self.random_flip}\n"
             f"\ttarget_flips: {self.target_flips}\n"
+            f"\tpct_low_light: {self.pct_low_light}\n"
+            f"\tpct_noise: {self.pct_noise}\n"
         )
 
     def _get_dataset(self):
@@ -90,7 +52,7 @@ class ObstacleTrainer(Trainer):
         ]
 
         return CustomImageFolder(
-            self.images_path,
+            settings.model_images,
             transforms.Compose(items),
             target_flips=self.target_flips,
             random_flip=self.random_flip,
@@ -117,19 +79,19 @@ class ObstacleTrainer(Trainer):
             num_workers=0,
         )
 
-        model_exists = os.path.isfile(self.model_file)
+        model_exists = os.path.isfile(settings.model_file)
 
         if use_resnet50:
             model = resnet50(weights=ResNet50_Weights.DEFAULT)
             num_ftrs = model.fc.in_features
-            model.fc = torch.nn.Linear(num_ftrs, self.num_categories)
+            model.fc = torch.nn.Linear(num_ftrs, settings.model_num_targets)
         else:
             model = alexnet(weights=AlexNet_Weights.DEFAULT)
             model.classifier[6] = torch.nn.Linear(
-                model.classifier[6].in_features, self.num_categories
+                model.classifier[6].in_features, settings.model_num_targets
             )
         if model_exists:
-            model.load_state_dict(torch.load(self.model_file))
+            model.load_state_dict(torch.load(settings.model_file, weights_only=False))
 
         device = torch.device("cuda" if torch.backends.cuda.is_built() else "cpu")
         model = model.to(device)
@@ -159,5 +121,5 @@ class ObstacleTrainer(Trainer):
             test_accuracy = 1.0 - float(test_error_count) / float(len(test_dataset))
             print("%d: %f" % (epoch, test_accuracy))
             if test_accuracy > best_accuracy:
-                torch.save(model.state_dict(), self.model_file)
+                torch.save(model.state_dict(), settings.model_file)
                 best_accuracy = test_accuracy

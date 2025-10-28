@@ -148,7 +148,7 @@ class Twist(DataModel):
 
     @property
     def csv(self):
-        return ",".join([self.linear.csv(), self.angular().csv()])
+        return ",".join([self.linear.csv, self.angular.csv])
 
     @property
     def dict(self):
@@ -173,15 +173,15 @@ class Twist(DataModel):
 class Pose(DataModel):
     def __init__(
         self,
-        position: Optional[Point] = Point(),
-        orientation: Optional[Quarternion] = Quarternion(),
+        position: Point | None = None,
+        orientation: Quarternion | None = None,
     ):
-        self.position = position
-        self.orientation = orientation
+        self.position = position or Point()
+        self.orientation: Quarternion = orientation or Quarternion()
 
     @property
     def csv(self):
-        return ",".join([self.position.csv(), self.orientation().csv()])
+        return ",".join([self.position.csv, self.orientation.csv])
 
     @property
     def numpy(self):
@@ -201,15 +201,15 @@ class Pose(DataModel):
 class Odometry(DataModel):
     def __init__(
         self,
-        header: Optional[Header] = Header(),
-        child_frame_id: Optional[str] = None,
-        twist: Optional[Twist] = Twist(),
-        pose: Optional[Pose] = Pose(),
+        header: Header | None = None,
+        child_frame_id: str | None = None,
+        twist: Twist | None = None,
+        pose: Pose | None = None,
     ):
-        self.header = header
-        self.child_frame_id = child_frame_id
-        self.twist = twist
-        self.pose = pose
+        self.header: Header = header or Header()
+        self.child_frame_id: str | None = child_frame_id
+        self.twist: Twist = twist or Twist()
+        self.pose: Pose = pose or Pose()
 
     @property
     def numpy(self):

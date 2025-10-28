@@ -3,9 +3,7 @@ ROI (Region of Interest) utility functions for consistent image cropping
 between training and inference pipelines.
 """
 
-import numpy as np
 from PIL import Image
-
 
 def apply_roi_crop(image, roi_height_ratio,  roi_vertical_offset, roi_width_ratio):
     """

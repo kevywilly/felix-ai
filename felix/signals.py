@@ -12,3 +12,4 @@ class Topics:
     ir = signal('ir')
     prediction = signal('prediction')
     pico_sensors = signal('pico_sensors')
+    nav_capture = signal('nav_capture')

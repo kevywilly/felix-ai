@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from enum import Enum
 from functools import cached_property
 import math
 from abc import ABC, abstractmethod
@@ -5,6 +7,22 @@ import numpy as np
 
 from lib.interfaces import Twist
 
+class VehicleDirection(int,Enum):
+    BACKWARD = -2
+    STATIONARY = -1
+    FORWARD = 0
+    LEFT = 1
+    RIGHT = 2
+    STRAFE_LEFT = 3
+    STRAFE_RIGHT = 4
+    
+
+@dataclass
+class VehicleTrajectory:
+    direction: VehicleDirection
+    magnitude: float
+    degrees_per_sec: float = 0.0  # Optional: direction in degrees, if needed
+    
 # https://gm0.org/en/latest/docs/software/concepts/kinematics.html
 class Vehicle(ABC):
     def __init__(self,
@@ -28,6 +46,37 @@ class Vehicle(ABC):
         self.fov = fov
         self.motor_voltage=motor_voltage
 
+    @cached_property
+    def vehicle_radius(self) -> float:
+        return 0.5 * math.sqrt(self.track_width**2 + self.wheel_base**2)
+
+    def is_turning_more_than_forward(self, linear_x, angular_z):
+        """
+        Determine if vehicle is turning more than going forward.
+        
+        Args:
+            linear_x: forward velocity (m/s)
+            angular_z: yaw rate (rad/s)
+        
+        Returns:
+            True if turning dominates forward motion
+        """
+        # Convert angular velocity to linear velocity at corner
+        angular_linear_equiv = abs(angular_z) * self.vehicle_radius
+        
+        # Compare magnitudes
+        return angular_linear_equiv > abs(linear_x)
+    
+    def get_turning_ratio(self, linear_x, angular_z):
+        """
+        Returns ratio > 1 if turning dominates, < 1 if forward motion dominates.
+        """
+        if abs(linear_x) < 0.001:  # avoid division by zero
+            return float('inf') if abs(angular_z) > 0.001 else 0.0
+        
+        angular_linear_equiv = abs(angular_z) * self.vehicle_radius
+        return angular_linear_equiv / abs(linear_x)
+        
     @cached_property
     def max_wheel_anglular_velocity(self):
         return self.max_rpm*(2*math.pi)/60
@@ -120,7 +169,6 @@ class Vehicle(ABC):
         
         return mps
 
-
     def mps_to_rpm(self, mps: np.ndarray) -> np.ndarray:
         rps = mps/self.meters_per_rotation
         rpm = rps*60
@@ -131,3 +179,54 @@ class Vehicle(ABC):
         return np.vectorize(lambda t: min(max(t,-100),100))(power)
        
 
+
+    def get_relative_motion(self, linear_x: float, linear_y: float, angular_z: float, 
+                        threshold: float = 0.05,
+                        angular_threshold_deg: float = 3.0) -> VehicleTrajectory:
+        """
+        Determine primary motion direction based on linear and angular velocities.
+        Optimized for visual/obstacle avoidance where camera perspective matters.
+        
+        Args:
+            linear_x: forward velocity (m/s)
+            linear_y: lateral (strafe) velocity (m/s)
+            angular_z: yaw rate (rad/s) - positive = left turn
+            threshold: minimum velocity magnitude to consider (m/s)
+            angular_threshold_deg: minimum angular velocity to prioritize turning (degrees/sec)
+        
+        Returns:
+            VehicleTrajectory with primary direction, magnitude, and rotation rate
+        """
+        # Convert angular threshold from degrees to radians
+        angular_threshold_rad = math.radians(angular_threshold_deg)
+        
+        # Convert angular velocity to degrees per second for output
+        angular_deg_per_sec = math.degrees(angular_z)
+        
+        # Convert angular velocity to equivalent linear velocity for magnitude calculation
+        angular_linear_equiv = abs(angular_z) * self.vehicle_radius
+        
+        # Calculate total magnitude
+        magnitude = math.sqrt(linear_x**2 + linear_y**2 + angular_linear_equiv**2)
+        
+        # Check if effectively stopped
+        if magnitude < threshold:
+            return VehicleTrajectory(
+                direction=VehicleDirection.STATIONARY, 
+                magnitude=0.0,
+                degrees_per_sec=0.0
+            )
+        
+        # Prioritize turning if angular velocity exceeds threshold
+        if abs(angular_z) >= angular_threshold_rad:
+            direction = VehicleDirection.LEFT if angular_z > 0 else VehicleDirection.RIGHT
+        elif abs(linear_x) >= abs(linear_y):
+            direction = VehicleDirection.FORWARD if linear_x > 0 else VehicleDirection.BACKWARD
+        else:
+            direction = VehicleDirection.STRAFE_LEFT if linear_y > 0 else VehicleDirection.STRAFE_RIGHT
+        
+        return VehicleTrajectory(
+            direction=direction, 
+            magnitude=magnitude,
+            degrees_per_sec=angular_deg_per_sec
+    )

@@ -77,14 +77,14 @@ class AppSettings:
         self.TRAINING = TrainingConfig(config)
 
         self.VEHICLE = MecanumVehicle(
-            min_rpm = config.get('vehicle').get('min_rpm',0),
-            max_rpm = config.get('vehicle').get('max_rpm',205),
-            wheel_radius = config.get('vehicle').get('wheel_radius'),
-            wheel_base = config.get('vehicle').get('wheel_base',0),
-            track_width = config.get('vehicle').get('track_width',0),
-            gear_ratio = config.get('vehicle').get('gear_ratio',0),
-            motor_voltage = config.get('vehicle').get('motor_voltage',0),
-            yaboom_port=config.get('peripherals').get('yaboom')
+            min_rpm = config.get('vehicle',{}).get('min_rpm',0),
+            max_rpm = config.get('vehicle',{}).get('max_rpm',205),
+            wheel_radius = config.get('vehicle',{}).get('wheel_radius'),
+            wheel_base = config.get('vehicle',{}).get('wheel_base',0),
+            track_width = config.get('vehicle',{}).get('track_width',0),
+            gear_ratio = config.get('vehicle',{}).get('gear_ratio',0),
+            motor_voltage = config.get('vehicle',{}).get('motor_voltage',0),
+            yaboom_port=config.get('peripherals',{}).get('yaboom')
         )   
         
         camera = config.get('camera',{})
@@ -92,30 +92,42 @@ class AppSettings:
         self.CAMERA_FOV = camera.get('fov',160)
         
         self.DISTORTION_COEFFICIENTS = np.array(
-            config.get('camera_calibration')
+            config.get('camera_calibration',{})
             .get('distortion_coefficients')
             .get('data')
         ).reshape(1,5)
         
         self.CAMERA_MATRIX = np.array(
-            config.get('camera_calibration')
+            config.get('camera_calibration',{})
             .get('camera_matrix')
             .get('data')
         ).reshape(3,3)
 
-        self.autodrive_linear = config.get('autodrive').get('linear')
-        self.autodrive_angular = config.get('autodrive').get('angular')
-        self.capture_when_driving = config.get('capture_when_driving', False)
+        self.autodrive_linear = config.get('autodrive',{}).get('linear',0.2)
+        self.autodrive_angular = config.get('autodrive',{}).get('angular',0.5)
+        self.nav_capture_frequency_seconds = config.get('nav_capture_frequency_seconds', 2)
         
-        self.DEBUG: bool = config.get('debug')
+        self.DEBUG: bool = config.get('debug', False)
 
         self.USE_RESNET50 = True
 
         model_settings = config.get('model',{})
+        self.model_num_targets = self.TRAINING.num_categories
+        self.model_nav_num_targets = 5
+        self.model_images = self.TRAINING.training_images_path
         self.model_type = ModelType(model_settings.get('type', ModelType.resnet_50))
-        self.use_roi = model_settings.get('use_roi', True)
-        self.roi_height_ratio = model_settings.get('roi_height_ratio', 0.6)
-        self.roi_vertical_offset = model_settings.get('roi_vertical_offset', 0.4)
+        self.model_use_roi = model_settings.get('use_roi', True)
+        self.model_roi_height_ratio = model_settings.get('roi_height_ratio', 0.6)
+        self.model_roi_vertical_offset = model_settings.get('roi_vertical_offset', 0.4)
+        self.model_roi_width_ratio = model_settings.get('roi_width_ratio', 1.0)
+        if self.model_use_roi:
+            file_path = Path(self.TRAINING.training_model_path)
+            self.model_file = file_path.parent / f"roi_{file_path.name}"
+            self.nav_model_file = file_path.parent / f"nav_roi_{file_path.name}"
+        else:
+            self.model_file = self.TRAINING.training_model_path
+            file_path = Path(self.TRAINING.training_model_path)
+            self.nav_model_file = file_path.parent / f"nav_{file_path.name}"
 
         logger.info("⚙️ Loaded App Settings")
 
@@ -124,7 +136,7 @@ class AppSettings:
         try:
             with open(config_file,'r') as f:
                 return yaml.safe_load(f)
-        except Exception as e:
+        except Exception:
             with open(os.path.join("config.yml"),'r') as f:
                 return yaml.safe_load(f)
     @property

@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any
 
 from felix.vision.roi_utils import apply_roi_crop
-from lib.interfaces import Measurement, Prediction, SensorReading, Twist
+from lib.interfaces import SensorReading, Twist
 from lib.nodes.base import BaseNode
 import torch
 import torchvision
@@ -19,43 +19,56 @@ from enum import Enum
 from felix.settings import ModelType
 
 # Import the additional models
-from torchvision.models import (
-    resnet50, ResNet50_Weights,
-    alexnet, AlexNet_Weights,
-    mobilenet_v3_large, MobileNet_V3_Large_Weights,
-    mobilenet_v3_small, MobileNet_V3_Small_Weights
-)
+from torchvision.models import resnet50, alexnet, mobilenet_v3_large, mobilenet_v3_small
 
 torch.hub.set_dir(settings.TRAINING.model_root)
 
-DEBUG=True
+DEBUG = True
 
-class Direction(str,Enum):
-    NA="NA"
-    FORWARD="FORWARD"
-    LEFT="LEFT"
-    RIGHT="RIGHT"
-    STRAFE_LEFT="STRAFLEFT"
-    STRAFE_RIGHT="STRAFERIGHT"
+
+class Direction(str, Enum):
+    NA = "NA"
+    FORWARD = "FORWARD"
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+    STRAFE_LEFT = "STRAFLEFT"
+    STRAFE_RIGHT = "STRAFERIGHT"
 
 
 class AutoDriver(BaseNode):
+    mean = 255.0 * np.array([0.485, 0.456, 0.406])
+    stdev = 255.0 * np.array([0.229, 0.224, 0.225])
+    normalize = torchvision.transforms.Normalize(mean, stdev)
 
-    def __init__(self, model_file=settings.TRAINING.training_model_path, **kwargs):
+    def __init__(self, use_nav: bool = False, **kwargs):
         super(AutoDriver, self).__init__(**kwargs)
-        self.device = torch.device('cuda' if torch.backends.cuda.is_built() else 'cpu')
-        self.model_file = model_file
+        self.device = torch.device("cuda" if torch.backends.cuda.is_built() else "cpu")
+
         self.model_loaded = False
         self.is_active = False
         self.raw_image = None
-        self.tof = {}
-        
+        self.tof: dict = {}
+        self.use_nav = use_nav
+        self.model_file = settings.nav_model_file if use_nav else settings.model_file
+        self.num_targets = settings.model_nav_num_targets if use_nav else settings.model_num_targets
+
         Topics.raw_image.connect(self._on_raw_image)
         Topics.autodrive.connect(self._on_autodrive)
         Topics.stop.connect(self._on_stop)
         Topics.pico_sensors.connect(self._on_pico_sensors)
 
         self.logger.info(f"AutoDriver using device: {self.device}")
+        self.logger.info(f"Model file: {self.model_file}")
+
+        if self.model_file_exists:
+            self.model = self._create_model()
+            self.load_state_dict(self.model)
+            self.model = self.model.to(self.device)
+
+        self.angular_to_linear_ratio = settings.VEHICLE.max_linear_velocity / settings.VEHICLE.max_angular_velocity
+
+
+        self.logger.info(f"Model loaded: {self.model_loaded}")
 
     def _on_pico_sensors(self, sender, payload: SensorReading):
         if payload.type != "tof":
@@ -83,12 +96,12 @@ class AutoDriver(BaseNode):
 
     @property
     def tof_prediction(self):
-        #return Direction.FORWARD
+        # return Direction.FORWARD
         threshhold = 180
 
-        left = self.tof.get(0)
-        right = self.tof.get(1)
-        
+        left = self.tof.get(0, 9999)
+        right = self.tof.get(1, 9999)
+
         if (left >= threshhold and right >= threshhold) or (left == right):
             return Direction.FORWARD
 
@@ -96,41 +109,50 @@ class AutoDriver(BaseNode):
             return Direction.RIGHT
         else:
             return Direction.LEFT
-    
-    def _create_model(self, model_type: ModelType, num_targets: int):
+
+    def _create_model(self):
         """
         Create and configure the model based on ModelType enum
         """
-        if model_type == ModelType.resnet_50:
+        if settings.model_type == ModelType.resnet_50:
             model = resnet50(weights=None)
             num_ftrs = model.fc.in_features
-            model.fc = torch.nn.Linear(num_ftrs, num_targets)
-            
-        elif model_type == ModelType.mobilenet_large:
+            model.fc = torch.nn.Linear(num_ftrs, self.num_targets)
+
+        elif settings.model_type == ModelType.mobilenet_large:
             model = mobilenet_v3_large(weights=None)
             # MobileNetV3 classifier is a Sequential with Linear layer at index 3
-            model.classifier[3] = torch.nn.Linear(model.classifier[3].in_features, num_targets)
-            
-        elif model_type == ModelType.mobilenet_small:
+            model.classifier[3] = torch.nn.Linear(
+                model.classifier[3].in_features, self.num_targets
+            )
+
+        elif settings.model_type == ModelType.mobilenet_small:
             model = mobilenet_v3_small(weights=None)
             # MobileNetV3 classifier is a Sequential with Linear layer at index 3
-            model.classifier[3] = torch.nn.Linear(model.classifier[3].in_features, num_targets)
-            
-        elif model_type == ModelType.alexnet:
+            model.classifier[3] = torch.nn.Linear(
+                model.classifier[3].in_features, self.num_targets
+            )
+
+        elif settings.model_type == ModelType.alexnet:
             model = alexnet(weights=None)
-            model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, num_targets)
-            
+            model.classifier[6] = torch.nn.Linear(
+                model.classifier[6].in_features, self.num_targets
+            )
+
         else:
             # Unknown model type - fallback to default
-            self.logger.warning(f"Unknown model_type '{model_type}', falling back to MobileNet V3 Large")
+            self.logger.warning(
+                f"Unknown model_type '{settings.model_type}', falling back to MobileNet V3 Large"
+            )
             model = mobilenet_v3_large(weights=None)
-            model.classifier[3] = torch.nn.Linear(model.classifier[3].in_features, num_targets)
-        
-        self.logger.info(f"Created model: {model_type.value}")
+            model.classifier[3] = torch.nn.Linear(
+                model.classifier[3].in_features, self.num_targets
+            )
+
+        self.logger.info(f"Created model: {settings.model_type.value}")
         return model
-    
+
     def spinner(self):
-            
         if self.is_active and self.raw_image is not None:
             if DEBUG:
                 print("Autodrive active, making prediction...")
@@ -143,17 +165,18 @@ class AutoDriver(BaseNode):
                 Topics.cmd_vel.send("autodrive", payload=Twist())
                 Topics.stop.send("autodrive")
                 raise ex
-            
-    
+
     def load_state_dict(self, model):
         try:
             if self.model_file_exists:
-                model.load_state_dict(torch.load(self.model_file))
+                model.load_state_dict(torch.load(self.model_file, weights_only=False))
                 self.model_loaded = True
             else:
                 raise Exception("model file does not exist")
         except Exception as ex:
-            self.logger.warning('======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============')
+            self.logger.warning(
+                "======== WARNING: COULD NOT LOAD MODEL FILE. AUTODRIVE IS NOT SAFE. ============"
+            )
             self.logger.warning(ex.__str__())
             self.model_loaded = False
 
@@ -164,87 +187,28 @@ class AutoDriver(BaseNode):
     def predict(self, input) -> Twist:
         pass
 
-class ObstacleAvoider(AutoDriver):
-    mean = 255.0 * np.array([0.485, 0.456, 0.406])
-    stdev = 255.0 * np.array([0.229, 0.224, 0.225])
-    normalize = torchvision.transforms.Normalize(mean, stdev)
-
-    def __init__(self, 
-                 model_file = settings.TRAINING.training_model_path, 
-                 model_type = settings.model_type,  # NEW: Accept model_type parameter
-                 use_roi = settings.use_roi,     # NEW: Enable ROI preprocessing
-                 roi_height_ratio = settings.roi_height_ratio,  # NEW: ROI parameters
-                 roi_vertical_offset = settings.roi_vertical_offset,
-                 num_targets = settings.TRAINING.num_categories, 
-                 linear = settings.autodrive_linear, 
-                 angular = settings.autodrive_angular):
-        super().__init__(model_file)
-        self.linear = linear
-        self.angular = angular
-        self.num_targets = num_targets
-        
-        # ROI Configuration
-        self.use_roi = use_roi
-        self.roi_height_ratio = roi_height_ratio
-        self.roi_vertical_offset = roi_vertical_offset
-        
-        # Determine model type - priority: parameter > settings > fallback
-        if model_type is not None:
-            self.model_type = model_type
-        elif hasattr(settings, 'MODEL_TYPE'):
-            self.model_type = settings.model_type
-        else:
-            # Default to MobileNet V3 Large for indoor robots (good balance of speed/accuracy)
-            self.model_type = ModelType.mobilenet_large
-            
-        self.logger.info(f"Using model type: {self.model_type}")
-        self.logger.info(f"ROI enabled: {self.use_roi}")
-  
-        if self.model_file_exists:
-            self.model = self._create_model(self.model_type, self.num_targets)
-            self.load_state_dict(self.model)
-            self.model = self.model.to(self.device)
-
-        self._print_status()
-
-    def _print_status(self):
-        self.logger.info(
-            f""" 
-            model type: {self.model_type}
-            model file: {self.model_file}
-            model exists: {self.model_file_exists}
-            model loaded: {self.model_loaded}
-            targets: {self.num_targets}
-            linear: {self.linear}
-            angular: {self.angular}
-            ROI enabled: {self.use_roi}
-            ROI height ratio: {self.roi_height_ratio}
-            ROI vertical offset: {self.roi_vertical_offset}
-            """
-        )
-
     def _apply_roi_crop(self, image):
-        if not self.use_roi:
+        if not settings.model_use_roi:
             return image
-        
+
         return apply_roi_crop(
             image,
-            roi_height_ratio=self.roi_height_ratio,
-            roi_vertical_offset=self.roi_vertical_offset,
-            roi_width_ratio=1.0
+            roi_height_ratio=settings.model_roi_height_ratio,
+            roi_vertical_offset=settings.model_roi_vertical_offset,
+            roi_width_ratio=1.0,
             # roi_width_ratio defaults to 1.0 in the central method
         )
 
     def preprocess(self, sensor_image):
         # Convert from BGR to RGB
         x = ImageUtils.bgr8_to_rgb8(sensor_image)
-        
+
         # Apply ROI cropping if enabled (CRITICAL for matching training!)
         x = self._apply_roi_crop(x)
-        
+
         # Resize to 224x224 (now resizing the ROI-cropped image)
-        x = cv2.resize(x, (224, 224), cv2.INTER_LINEAR)
-        
+        x = cv2.resize(x, (224, 224), interpolation=cv2.INTER_LINEAR)  # type: ignore
+
         # Standard PyTorch preprocessing
         x = x.transpose((2, 0, 1))
         x = torch.from_numpy(x).float()
@@ -253,29 +217,26 @@ class ObstacleAvoider(AutoDriver):
         x = x[None, ...]
         return x
 
-    def get_predictions(self, input) -> Any | None:
+    def get_predictions(self, input) -> list[float] | None:
         if not self.model_loaded:
             return None
-        
+
         x = self.preprocess(input)
         y = self.model(x)
-        
+
         # we apply the `softmax` function to normalize the output vector so it sums to 1 (which makes it a probability distribution)
         y = F.softmax(y, dim=1)
         self.logger.debug("softmax", y)
         return y.flatten()
 
-class BinaryObstacleAvoider(ObstacleAvoider):
 
+class BinaryObstacleAvoider(AutoDriver):
     NA = -1
     BLOCKED = 0
     FORWARD = 1
 
     def __init__(self, **kwargs):
-        super().__init__(
-            num_targets=2,
-            **kwargs
-        )
+        super().__init__()
         self.status = self.NA
 
     def predict(self, input) -> Twist:
@@ -286,37 +247,34 @@ class BinaryObstacleAvoider(ObstacleAvoider):
         if predictions is None:
             self.logger.info("No predictions")
             return cmd
-        
+
         forward = float(predictions[self.FORWARD])
         blocked = float(predictions[self.BLOCKED])
 
         if forward > 0.5:
-            cmd.linear.x = self.linear
+            cmd.linear.x = settings.autodrive_linear
             cmd.angular.z = 0.0
             self.status = self.FORWARD
         elif blocked >= 0.5:
             cmd.linear.x = 0.0
-            cmd.angular.z = self.angular
+            cmd.angular.z = settings.autodrive_angular
             self.status = self.BLOCKED
-        
+
         self.logger.debug(f"predict: 0:{blocked:.4f}, 1:{forward:.4f} ({self.status})")
         return cmd
 
-class TernaryObstacleAvoider(ObstacleAvoider):
+
+class TernaryObstacleAvoider(AutoDriver):
     # indexes for predictions
     _forward = 0
     _left = 1
     _right = 2
 
     def __init__(self, **kwargs):
-        super().__init__(
-            num_targets=3,
-            **kwargs
-        )
+        super().__init__(num_targets=3, **kwargs)
         self.direction = Direction.FORWARD
-        
-    def predict(self, input) -> Twist:
 
+    def predict(self, input) -> Twist:
         if DEBUG:
             print("Making ternary prediction...")
 
@@ -327,67 +285,104 @@ class TernaryObstacleAvoider(ObstacleAvoider):
 
         predictions = self.get_predictions(input)
 
+        print(predictions)
+
         if predictions is None:
             self.logger.error("autodriver failed to get predictions, stopping.")
             return cmd
-        
+
         forward = float(predictions[self._forward])
         left = float(predictions[self._left])
         right = float(predictions[self._right])
-        
+
         tof = self.tof_prediction
 
-        self.logger.info(f"l: {left}, f: {forward}, r:{right}, ir: {self.tof_prediction}")
+        self.logger.info(
+            f"l: {left}, f: {forward}, r:{right}, ir: {self.tof_prediction}"
+        )
 
         if forward > 0.5:
             self.direction = Direction.FORWARD
             cmd.angular.z = 0.0
             cmd.linear.y = 0.0
             if tof == Direction.FORWARD:
-                cmd.linear.x = self.linear  # Set forward motion for all forward cases
+                cmd.linear.x = (
+                    settings.autodrive_linear
+                )  # Set forward motion for all forward cases
             else:
-                cmd.linear.x = self.linear*3/4
-                cmd.linear.y = self.linear*(3/4 if tof == Direction.LEFT else -3/4)
+                cmd.linear.x = settings.autodrive_linear * 3 / 4
+                cmd.linear.y = settings.autodrive_linear * (
+                    3 / 4 if tof == Direction.LEFT else -3 / 4
+                )
         else:
             cmd.linear.x = 0.0
             cmd.linear.y = 0.0
             if self.direction is Direction.FORWARD:
                 self.direction = Direction.LEFT if left > right else Direction.RIGHT
 
-            cmd.angular.z = self.angular if self.direction == Direction.LEFT else -self.angular
-        
+            cmd.angular.z = (
+                settings.autodrive_angular
+                if self.direction == Direction.LEFT
+                else -settings.autodrive_angular
+            )
+
         self.logger.debug("autodrive:", cmd)
         return cmd
+    
+class NavAutoDriver(AutoDriver):
+    def __init__(self, **kwargs):
+        super().__init__(use_nav=True, **kwargs)
 
-# Convenience factory functions for easy instantiation
-def create_fast_binary_avoider(model_file=None, use_roi=True):
-    """Create a fast binary obstacle avoider using MobileNet for indoor use"""
-    return BinaryObstacleAvoider(
-        model_type=ModelType.mobilenet_large,
-        model_file=model_file or settings.TRAINING.training_model_path,
-        use_roi=use_roi
-    )
+    def predict(self, input) -> Twist:
+        if DEBUG:
+            print("Making navigation prediction...")
 
-def create_accurate_binary_avoider(model_file=None, use_roi=True):
-    """Create a high-accuracy binary obstacle avoider using ResNet-50"""
-    return BinaryObstacleAvoider(
-        model_type=ModelType.resnet_50,
-        model_file=model_file or settings.TRAINING.training_model_path,
-        use_roi=use_roi
-    )
+        cmd = Twist()
 
-def create_fast_ternary_avoider(model_file=None, use_roi=True):
-    """Create a fast ternary obstacle avoider using MobileNet for indoor use"""
-    return TernaryObstacleAvoider(
-        model_type=ModelType.mobilenet_large,
-        model_file=model_file or settings.TRAINING.training_model_path,
-        use_roi=use_roi
-    )
+        if not self.is_active:
+            return cmd
 
-def create_accurate_ternary_avoider(model_file=None, use_roi=True):
-    """Create a high-accuracy ternary obstacle avoider using ResNet-50"""
-    return TernaryObstacleAvoider(
-        model_type=ModelType.resnet_50,
-        model_file=model_file or settings.TRAINING.training_model_path,
-        use_roi=use_roi
-    )
+        predictions = self.get_predictions(input)
+
+        tof = self.tof_prediction
+
+        if predictions is None:
+            self.logger.error("autodriver failed to get predictions, stopping.")
+            return cmd
+
+        # Assuming predictions correspond to [Forward, Left, LeftHard, Right, RightHard]
+        forward = float(predictions[0])
+        left = float(predictions[1])
+        hard_left = float(predictions[2])
+        right = float(predictions[3])
+        hard_right = float(predictions[4])
+
+        self.logger.info(
+            f"AutoNav f: {forward:.2f}, l: {left:.2f}, hl: {hard_left:.2f} r:{right:.2f}, hr: {hard_right:.2f}, ir: {self.tof.get(0,0):.2f} : {self.tof.get(1,0):.2f}"
+        )
+
+        if forward > left and forward > right:
+            linear_x = settings.autodrive_linear * forward * 2
+        else:
+            linear_x = 0.0
+
+        if left > right:
+            angular_z = (left + hard_left * 2) * settings.autodrive_angular
+        else:
+            angular_z = -(right + hard_right * 2) * settings.autodrive_angular
+        
+        linear_y = 0.0
+        if tof == Direction.LEFT:
+            linear_y = settings.autodrive_linear * 3/4
+            linear_x = linear_x * 3/4
+        elif tof == Direction.RIGHT:
+            linear_y = -settings.autodrive_linear * 3/4
+            linear_x = linear_x * 3/4
+
+        cmd.linear.x = linear_x
+        cmd.linear.y = linear_y
+        cmd.angular.z = angular_z
+
+
+        self.logger.debug("autodrive:", cmd)
+        return cmd

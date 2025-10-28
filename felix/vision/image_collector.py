@@ -4,9 +4,16 @@ import json
 from pathlib import Path
 import cv2
 from felix.settings import settings
-from uuid import uuid4
 from typing import Optional, Dict
 from glob import glob
+
+from lib.interfaces import Twist
+
+def _normalize_velocity(value: float, scale: float = 100.0) -> int:
+    return int(round(value, 2) * scale)
+
+def _denormalize_velocity(value: int, scale: float = 100.0) -> float:
+    return float(value) / scale
 
 class ImageCollector:
     def __init__(self):
@@ -26,7 +33,7 @@ class ImageCollector:
             pass
 
     
-    def save_dict(self, data, path, filename) -> bool:
+    def save_dict(self, data, path, filename) -> bool | str:
         if not os.path.exists(path=path):
             os.makedirs(path)
 
@@ -36,12 +43,14 @@ class ImageCollector:
             print(f"writing additional data to {save_path}")
             try:
                 f.write(json.dumps(data))
+                
             except Exception as ex:
                 print(str(ex))
                 return False
 
+        return save_path
     
-    def save_image(self, image, path, filename) -> bool:
+    def save_image(self, image, path, filename) -> bool | str:
         
         if not os.path.exists(path=path):
             os.makedirs(path)
@@ -60,17 +69,17 @@ class ImageCollector:
 
 
     @classmethod
-    def time_prefix(cls):
-        return str(time.time()).replace('.','-')
+    def time_prefix(cls) -> str:
+        return str(int(time.time()*1000))
     
     @classmethod
-    def filetime(cls, extension=None) -> bool:
+    def filetime(cls, extension=None) -> str:
         s = cls.time_prefix()
         if extension:
             return s+"."+extension
         return s
     
-    def create_snapshot(self, image, folder, label, additional_data: Optional[Dict] = None) -> int:
+    def create_snapshot(self, image, folder, label, additional_data: Optional[Dict] = None) -> dict:
         path = os.path.join(settings.TRAINING.training_folder(folder),label)
         t = self.time_prefix()
         self.save_image(
@@ -94,7 +103,7 @@ class ImageCollector:
             d[p.lower()] = len(glob(os.path.join(path,p,"*.jpg")))
         return d
     
-    def save_tag(self, image, tag, additional_data: Optional[Dict] = None) -> int:
+    def save_tag(self, image, tag, additional_data: Optional[Dict] = None) -> dict:
 
         path = os.path.join(settings.TRAINING.tags_path,tag.lower())
         t = self.time_prefix()
@@ -115,11 +124,18 @@ class ImageCollector:
 
         return d
             
-    def save_navigation_image(self, x: int, y:int, width:int, height: int, image) -> str:
-        name = 'xy_%03d_%03d_%03d_%03d_%s' % (x, y, width, height, self.filetime('jpg'))
+    def save_navigation_image(self, tof: dict, cmd_vel: Twist, image, folder: str | None = None) -> bool | str:
+        tof_left = tof.get(0, 999)
+        tof_right = tof.get(1, 999)
+        x = _normalize_velocity(cmd_vel.linear.x)
+        y = _normalize_velocity(cmd_vel.linear.y)
+        z = _normalize_velocity(cmd_vel.angular.z)
+        name = f'nav_{x}_{y}_{z}_{self.filetime("jpg")}'
+        save_path = os.path.join(settings.TRAINING.navigation_path, folder) if folder else settings.TRAINING.navigation_path
+        os.makedirs(save_path, exist_ok=True)
         return self.save_image(
             image=image,
-            path=settings.TRAINING.navigation_path,
+            path=save_path,
             filename=name
         )
 
@@ -137,9 +153,14 @@ class ImageCollector:
     def delete_image(self, category, name):
         try:
             os.remove(os.path.join(self.category_path(category), name))
-            self._generate_counts()
-        except:
-            pass
+            self.get_snapshots(category)
+        except Exception:
+            return
             
 
         return True
+    
+    def category_path(self, category: str) -> str:
+        return os.path.join(
+            settings.TRAINING.training_images_path,
+            category.lower())
