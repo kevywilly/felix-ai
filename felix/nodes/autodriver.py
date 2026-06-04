@@ -40,7 +40,7 @@ class AutoDriver(BaseNode):
     stdev = 255.0 * np.array([0.229, 0.224, 0.225])
     normalize = torchvision.transforms.Normalize(mean, stdev)
 
-    def __init__(self, use_nav: bool = False, **kwargs):
+    def __init__(self, model_file: str, num_targets: int, **kwargs):
         super(AutoDriver, self).__init__(**kwargs)
         self.device = torch.device("cuda" if torch.backends.cuda.is_built() else "cpu")
 
@@ -48,22 +48,25 @@ class AutoDriver(BaseNode):
         self.is_active = False
         self.raw_image = None
         self.tof: dict = {}
-        self.use_nav = use_nav
-        self.model_file = settings.nav_model_file if use_nav else settings.model_file
-        self.num_targets = settings.model_nav_num_targets if use_nav else settings.model_num_targets
+        self.model_file = model_file
+        self.num_targets = num_targets
 
         Topics.raw_image.connect(self._on_raw_image)
         Topics.autodrive.connect(self._on_autodrive)
         Topics.stop.connect(self._on_stop)
         Topics.pico_sensors.connect(self._on_pico_sensors)
 
-        self.logger.info(f"AutoDriver using device: {self.device}")
-        self.logger.info(f"Model file: {self.model_file}")
+        print(f"AutoDriver using device: {self.device}")
+        print(f"Model file: {self.model_file}")
 
         if self.model_file_exists:
             self.model = self._create_model()
             self.load_state_dict(self.model)
             self.model = self.model.to(self.device)
+        else:
+            print(
+                f"Model file '{self.model_file}' does not exist. AutoDrive is not safe!"
+            )
 
         self.angular_to_linear_ratio = settings.VEHICLE.max_linear_velocity / settings.VEHICLE.max_angular_velocity
 
@@ -219,6 +222,7 @@ class AutoDriver(BaseNode):
 
     def get_predictions(self, input) -> list[float] | None:
         if not self.model_loaded:
+            print("Model not loaded, cannot get predictions")
             return None
 
         x = self.preprocess(input)
@@ -236,7 +240,7 @@ class BinaryObstacleAvoider(AutoDriver):
     FORWARD = 1
 
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(model_file=settings.TRAINING.training_model_path, num_targets=2, **kwargs)
         self.status = self.NA
 
     def predict(self, input) -> Twist:
@@ -271,7 +275,7 @@ class TernaryObstacleAvoider(AutoDriver):
     _right = 2
 
     def __init__(self, **kwargs):
-        super().__init__(num_targets=3, **kwargs)
+        super().__init__(model_file=settings.TRAINING.training_model_path, num_targets=3, **kwargs)
         self.direction = Direction.FORWARD
 
     def predict(self, input) -> Twist:
@@ -329,60 +333,3 @@ class TernaryObstacleAvoider(AutoDriver):
         self.logger.debug("autodrive:", cmd)
         return cmd
     
-class NavAutoDriver(AutoDriver):
-    def __init__(self, **kwargs):
-        super().__init__(use_nav=True, **kwargs)
-
-    def predict(self, input) -> Twist:
-        if DEBUG:
-            print("Making navigation prediction...")
-
-        cmd = Twist()
-
-        if not self.is_active:
-            return cmd
-
-        predictions = self.get_predictions(input)
-
-        tof = self.tof_prediction
-
-        if predictions is None:
-            self.logger.error("autodriver failed to get predictions, stopping.")
-            return cmd
-
-        # Assuming predictions correspond to [Forward, Left, LeftHard, Right, RightHard]
-        forward = float(predictions[0])
-        left = float(predictions[1])
-        hard_left = float(predictions[2])
-        right = float(predictions[3])
-        hard_right = float(predictions[4])
-
-        self.logger.info(
-            f"AutoNav f: {forward:.2f}, l: {left:.2f}, hl: {hard_left:.2f} r:{right:.2f}, hr: {hard_right:.2f}, ir: {self.tof.get(0,0):.2f} : {self.tof.get(1,0):.2f}"
-        )
-
-        if forward > left and forward > right:
-            linear_x = settings.autodrive_linear * forward * 2
-        else:
-            linear_x = 0.0
-
-        if left > right:
-            angular_z = (left + hard_left * 2) * settings.autodrive_angular
-        else:
-            angular_z = -(right + hard_right * 2) * settings.autodrive_angular
-        
-        linear_y = 0.0
-        if tof == Direction.LEFT:
-            linear_y = settings.autodrive_linear * 3/4
-            linear_x = linear_x * 3/4
-        elif tof == Direction.RIGHT:
-            linear_y = -settings.autodrive_linear * 3/4
-            linear_x = linear_x * 3/4
-
-        cmd.linear.x = linear_x
-        cmd.linear.y = linear_y
-        cmd.angular.z = angular_z
-
-
-        self.logger.debug("autodrive:", cmd)
-        return cmd

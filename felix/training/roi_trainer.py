@@ -40,7 +40,6 @@ class ROIObstacleTrainer(Trainer):
         pct_low_light=0.2,
         pct_noise=0.2,
         early_stop_threshold=0.98,
-        train_nav: bool = False,
         *args,
         **kwargs,
     ):
@@ -60,9 +59,8 @@ class ROIObstacleTrainer(Trainer):
         self.pct_low_light = pct_low_light
         self.pct_noise = pct_noise
         self.early_stop_threshold = early_stop_threshold
-        self.train_nav = train_nav
-        self.model_file = settings.nav_model_file if train_nav else settings.model_file
-        self.num_targets = settings.model_nav_num_targets if train_nav else settings.model_num_targets
+        self.model_file = settings.model_file
+        self.num_targets = settings.model_num_targets
 
         logger.info(
             "ROI Obstacle Trainer Loaded with settings: "
@@ -111,19 +109,13 @@ class ROIObstacleTrainer(Trainer):
             ]
         )
 
-        if self.train_nav:
-            logger.info("Creating navigation dataset with ROI transforms")
-            return NavImageFolder(
-                settings.TRAINING.navigation_path,
-                transforms.Compose(transform_list),
-            )
-        else:
-            return CustomImageFolder(
-                settings.model_images,
-                transforms.Compose(transform_list),
-                target_flips=self.target_flips,
-                random_flip=self.random_flip,
-            )
+        
+        return CustomImageFolder(
+            settings.model_images,
+            transforms.Compose(transform_list),
+            target_flips=self.target_flips,
+            random_flip=self.random_flip,
+        )
 
     def _get_model(self):
         """

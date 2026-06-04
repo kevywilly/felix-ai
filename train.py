@@ -29,7 +29,6 @@ logger.addHandler(handler)
     help="Accuracy threshold for early stopping",
 )
 @click.option("--start-clean", is_flag=True, help="Start with a clean model")
-@click.option("--train-nav", is_flag=True, help="Train navigation model")
 def cli(
     epochs,
     pct_low_light,
@@ -38,8 +37,7 @@ def cli(
     test_pct,
     iterations,
     threshold,
-    start_clean,
-    train_nav
+    start_clean
 ):
     """
     This script trains Felix's Brain.
@@ -53,10 +51,7 @@ def cli(
         target_flips = None
 
     if start_clean:
-        if train_nav:
-            move_file_with_timestamp(settings.nav_model_file)
-        else:
-            move_file_with_timestamp(settings.model_file)
+        move_file_with_timestamp(settings.model_file)
 
     
     trainer = ROIObstacleTrainer(
@@ -66,7 +61,6 @@ def cli(
         early_stop_threshold=threshold,
         pct_low_light=pct_low_light,
         pct_noise=pct_noise,
-        train_nav=train_nav,
     )
 
     for i in range(iterations):

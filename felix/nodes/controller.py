@@ -5,7 +5,7 @@ from typing import Optional
 from felix.settings import settings
 from felix.vision.image import ImageUtils
 from felix.vision.image_collector import ImageCollector
-from lib.interfaces import Odometry, Twist, Vector3
+from lib.interfaces import Odometry, SensorReading, Twist, Vector3
 from lib.nodes.base import BaseNode
 import asyncio
 import numpy as np
@@ -15,6 +15,12 @@ import concurrent.futures
 import time
 from felix.signals import Topics
 from lib.vehicles.vehicle import VehicleTrajectory, VehicleDirection
+
+def _normalize_velocity(value: float, scale: int = 1000) -> int:
+    return int(round(value * scale))
+
+def _denormalize_velocity(value: int, scale: int = 1000) -> float:
+    return float(value) / scale
 
 
 class NavRequest:
@@ -82,12 +88,15 @@ class Controller(BaseNode):
 
         self.cmd_vel = Twist()
         self.prev_cmd_vel = Twist()
-
         self.vehicle = settings.VEHICLE
         self._bot = Rosmaster(car_type=2, com=self.vehicle.yaboom_port)
         self._bot.create_receive_threading()
         self._running = False
         self._nav_target: Optional[Odometry] = None
+
+        self.tof: dict[int, int] = {}
+        self.prev_tof: dict[int, int] = {}
+
 
         self.attitude_data = np.zeros(3)
         self.magnometer_data = np.zeros(3)
@@ -129,7 +138,16 @@ class Controller(BaseNode):
         Topics.nav_target.connect(self._on_nav_signal)
         Topics.raw_image.connect(self._on_raw_image_signal)
         Topics.nav_capture.connect(self._on_nav_capture_signal)
+        Topics.pico_sensors.connect(self._on_pico_sensors)
 
+    def _on_pico_sensors(self, sender, payload: SensorReading):
+        self.logger.debug(f"Received pico sensor reading: {payload}")
+        if payload.type != "tof":
+            return
+        self.prev_tof = self.tof.copy()
+        self.tof[payload.id] = int(payload.value)
+        self.logger.debug(f"tof: {payload.id} = {payload.value}")
+        
     def _on_stop_signal(self, sender, **kwargs):
         self.stop()
 
@@ -161,15 +179,43 @@ class Controller(BaseNode):
     async def capture_nav_image(self):
         if self.nav_capture:
             if time.time() - self._last_capture_time > settings.nav_capture_frequency_seconds:
+                if self.camera_image is None:
+                    return
                 if self.cmd_vel.is_zero:
                     return
-                if self.camera_image is None:
+                if not self.tof or not self.prev_tof:
                     return
                 
                 image = ImageUtils.bgr8_to_jpeg(self.camera_image)
                 self.logger.info("Capturing nav image")
-                saved = self._image_collector.save_navigation_image(self.cmd_vel, image, self.capture_session_id)
-                self.logger.info(f"Saved nav image: {saved}")
+                try:
+                    values = [self.prev_tof[0], 
+                        self.prev_tof[1],
+                        _normalize_velocity(self.prev_cmd_vel.linear.x),
+                        _normalize_velocity(self.prev_cmd_vel.linear.y),
+                        _normalize_velocity(self.prev_cmd_vel.angular.z),
+                        self.tof[0], 
+                        self.tof[1], 
+                        _normalize_velocity(self.cmd_vel.linear.x), 
+                        _normalize_velocity(self.cmd_vel.linear.y),
+                        _normalize_velocity(self.cmd_vel.angular.z)]
+                    
+                    saved = self._image_collector.save_navigation_image(
+                        [self.prev_tof[0], 
+                        self.prev_tof[1],
+                        _normalize_velocity(self.prev_cmd_vel.linear.x),
+                        _normalize_velocity(self.prev_cmd_vel.linear.y),
+                        _normalize_velocity(self.prev_cmd_vel.angular.z),
+                        self.tof[0], 
+                        self.tof[1], 
+                        _normalize_velocity(self.cmd_vel.linear.x), 
+                        _normalize_velocity(self.cmd_vel.linear.y),
+                        _normalize_velocity(self.cmd_vel.angular.z)], 
+                        image, self.capture_session_id)
+                    self.logger.info(f"Saved nav image: {saved}")
+                except Exception as ex:
+                    self.logger.info(ex)
+                
                 self._last_capture_time = time.time()
             
     def spinner(self):
@@ -215,9 +261,6 @@ class Controller(BaseNode):
 
         self.prev_cmd_vel = self.cmd_vel.copy()
         self.cmd_vel = cmd_vel.copy()
-        
-
-        
 
         scaled = self.vehicle.scale_twist(cmd_vel)
 

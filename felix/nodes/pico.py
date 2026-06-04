@@ -8,7 +8,6 @@ from felix.signals import Topics
 from lib.interfaces import SensorReading
 from lib.nodes.base import BaseNode
 
-
 class PicoSensors(BaseNode):
     def __init__(self, **kwargs):
 
@@ -51,7 +50,6 @@ class PicoSensors(BaseNode):
                     Topics.pico_sensors.send(payload=reading)
                     self.logger.debug(reading)
                     #if reading.value < 250:
-                    #    print(reading)
             except json.JSONDecodeError as e:
                 #print(line)
                 self.logger.error(f"JSON decode error: {e}")
@@ -69,5 +67,6 @@ class PicoSensors(BaseNode):
 
 if __name__ == "__main__":
     node = PicoSensors()
+    print("Starting Pico sensor node")
     asyncio.run(node.spin())
         

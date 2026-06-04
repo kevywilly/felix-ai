@@ -50,6 +50,10 @@ class TrainingConfig:
         return os.path.join(self.model_root, f'checkpoints/{self.mode}_obstacle_avoidance.pth')
     
     @property
+    def mecanum_model_path(self):
+        return os.path.join(self.model_root, f'checkpoints/mecanum_resnet50.pth')
+    
+    @property
     def training_images_path(self):
         return os.path.join(self.data_root, f"training/{self.mode}")
 
@@ -113,7 +117,7 @@ class AppSettings:
 
         model_settings = config.get('model',{})
         self.model_num_targets = self.TRAINING.num_categories
-        self.model_nav_num_targets = 5
+        self.model_nav_num_targets = 3
         self.model_images = self.TRAINING.training_images_path
         self.model_type = ModelType(model_settings.get('type', ModelType.resnet_50))
         self.model_use_roi = model_settings.get('use_roi', True)
@@ -123,11 +127,8 @@ class AppSettings:
         if self.model_use_roi:
             file_path = Path(self.TRAINING.training_model_path)
             self.model_file = file_path.parent / f"roi_{file_path.name}"
-            self.nav_model_file = file_path.parent / f"nav_roi_{file_path.name}"
         else:
             self.model_file = self.TRAINING.training_model_path
-            file_path = Path(self.TRAINING.training_model_path)
-            self.nav_model_file = file_path.parent / f"nav_{file_path.name}"
 
         logger.info("⚙️ Loaded App Settings")
 

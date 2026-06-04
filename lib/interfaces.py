@@ -235,7 +235,8 @@ class SensorReading:
     value: float
     ts: int
 
-    def from_json(data):
+    @staticmethod
+    def from_json(data) -> "SensorReading":
         return SensorReading(
             id=data.get("id"),
             type=data.get("type"),

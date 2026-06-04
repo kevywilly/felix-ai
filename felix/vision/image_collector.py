@@ -9,11 +9,6 @@ from glob import glob
 
 from lib.interfaces import Twist
 
-def _normalize_velocity(value: float, scale: float = 100.0) -> int:
-    return int(round(value, 2) * scale)
-
-def _denormalize_velocity(value: int, scale: float = 100.0) -> float:
-    return float(value) / scale
 
 class ImageCollector:
     def __init__(self):
@@ -124,13 +119,14 @@ class ImageCollector:
 
         return d
             
-    def save_navigation_image(self, tof: dict, cmd_vel: Twist, image, folder: str | None = None) -> bool | str:
-        tof_left = tof.get(0, 999)
-        tof_right = tof.get(1, 999)
-        x = _normalize_velocity(cmd_vel.linear.x)
-        y = _normalize_velocity(cmd_vel.linear.y)
-        z = _normalize_velocity(cmd_vel.angular.z)
-        name = f'nav_{x}_{y}_{z}_{self.filetime("jpg")}'
+    def save_navigation_image(
+            self, 
+            values: list[int],
+            image, folder: str | None = None) -> bool | str:
+        
+        v = "_".join(str(val) for val in values)
+        name = f'nav_{v}_{self.filetime("jpg")}'
+        print(f"Saving navigation image with values: name={name}")
         save_path = os.path.join(settings.TRAINING.navigation_path, folder) if folder else settings.TRAINING.navigation_path
         os.makedirs(save_path, exist_ok=True)
         return self.save_image(
