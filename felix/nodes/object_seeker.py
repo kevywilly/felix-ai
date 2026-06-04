@@ -94,12 +94,24 @@ class ObjectSeeker(BaseNode):
 
     # ---- main loop ------------------------------------------------------
 
+    def _log_throttled(self, msg):
+        # spinner runs at 8 Hz; log ~1/sec so the reason for (not) driving is
+        # visible without flooding the console.
+        self._log_ctr = getattr(self, "_log_ctr", 0) + 1
+        if self._log_ctr % 8 == 1:
+            self.logger.info(msg)
+
     def spinner(self):
         if not self.is_active:
             return
 
         target = self._best_target()
         if target is None:
+            n = len(self.latest.detections) if self.latest else 0
+            labels = sorted({d.label for d in self.latest.detections}) if self.latest else []
+            self._log_throttled(
+                f"seek[{self.target_label}]: NO TARGET — {n} detections in view: {labels}"
+            )
             self._coast_to_stop()
             return
 
@@ -109,10 +121,17 @@ class ObjectSeeker(BaseNode):
         twist = Twist()
         twist.angular.z = -x_rel * settings.autodrive_angular
 
-        if self.use_tof_safety and self._obstacle_ahead:
+        veto = self.use_tof_safety and self._obstacle_ahead
+        if veto:
             twist.linear.x = 0.0  # keep target centered, but don't advance
         else:
             twist.linear.x = y_rel * settings.autodrive_linear
+
+        self._log_throttled(
+            f"seek[{self.target_label}]: target cx={target.cx:.2f} cy={target.cy:.2f} "
+            f"-> linear={twist.linear.x:.3f} angular={twist.angular.z:.3f} "
+            f"tof_veto={veto} tof={self.tof}"
+        )
 
         self._driving = True
         Topics.cmd_vel.send("seek", payload=twist)

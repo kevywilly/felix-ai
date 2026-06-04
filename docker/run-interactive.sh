@@ -58,6 +58,7 @@ if [ $ARCH = "aarch64" ]; then
 		--device /dev/gpiochip1 \
 		--volume ${HOME}/felix-ai:/felix-ai \
 		--volume ${HOME}/data:/data \
+		--volume ${HOME}/.claude-felix:/.claude \
 		--device /dev/snd \
 		--device /dev/bus/usb \
 		--device /dev/myserial \

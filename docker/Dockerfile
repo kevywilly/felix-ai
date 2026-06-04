@@ -1,79 +1,66 @@
-#FROM ai-base:latest as stage1
-# jetson-inference brings jetson_utils (videoSource/videoOutput WebRTC, cudaToNumpy)
-# + torch/torchvision, without the nano_llm/VILA LLM stack. See video_agent.py.
-# run this first then get the image jetson-contaners build jetson-inference #from source, so we get the latest and greatest CUDA-optimized PyTorch, and the latest jetson-utils with WebRTC support. The base image also has OpenCV
-FROM jetson-inference:jetson-inference:r36.4.0 AS stage1
+FROM ultralytics/ultralytics:latest-jetson-jetpack6 AS stage1
 
-ENV CUDA_HOME=/usr/local/cuda
-
+# Jetson identity for Blinka
 ENV BLINKA_FORCECHIP=T234
 ENV BLINKA_FORCEBOARD=JETSON_ORIN_NANO
 ENV JETSON_MODEL_NAME=JETSON_ORIN_NANO
+ENV CLAUDE_CONFIG_DIR="/.claude"
 
-WORKDIR /
+# Pin pip away from the broken jetson.webredirect default
+ENV PIP_INDEX_URL=https://pypi.org/simple
 
+# System packages: GStreamer extras, I2C, mDNS, networking utils
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      vim i2c-tools \
+      libzmq3-dev libzmq5 pkg-config \
+      gstreamer1.0-nice gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+      libsrtp2-dev libavdevice-dev libavfilter-dev \
+      libopus-dev libvpx-dev \
+      avahi-utils libnss-mdns \
+      curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
+# Robotics: sensors, GPIO, serial, motor control
+RUN pip3 install --no-cache-dir \
+      pyserial \
+      smbus2 \
+      Jetson.GPIO \
+      adafruit-blinka \
+      adafruit-circuitpython-vl53l0x
+
+# Web + teleop server
+RUN pip3 install --no-cache-dir \
+      flask flask-cors flask-sock \
+      nicegui \
+      click pandas asyncio-atexit
+
+# WebRTC video path (aiortc + deps)
+RUN pip3 install --no-cache-dir \
+      aiortc \
+      aiohttp \
+      av
+
+# The ultralytics jetpack base ships opencv-python-headless in
+# /usr/local/lib, which shadows JetPack's GStreamer-enabled cv2 in
+# /usr/lib. A headless wheel has GStreamer:NO, so cv2.VideoCapture(...,
+# CAP_GSTREAMER) silently returns isOpened()==False and the CSI camera
+# never opens. Remove the pip wheels so the system OpenCV (GStreamer:YES)
+# is used, then assert GStreamer support at build time so a future base
+# bump can't reintroduce the regression silently.
+RUN pip3 uninstall -y opencv-python opencv-python-headless 2>/dev/null || true \
+ && python3 -c "import cv2, sys; \
+print('cv2:', cv2.__file__); \
+sys.exit(0 if any(l.strip().startswith('GStreamer') and 'YES' in l for l in cv2.getBuildInformation().splitlines()) else 'cv2 lacks GStreamer support')"
+
+# App scripts
 COPY ./scripts/entrypoint.sh /
 COPY ./scripts/felix.sh /
 COPY ./scripts/train.sh /
 
-RUN apt-get update && apt-get -y install vim i2c-tools libzmq3-dev libzmq5 pkg-config 
-
-# apt install -y gstreamer1.0-nice
-# apt-get install -y avahi-utils libnss-mdns 
-# service avahi-daemon stop
-
-RUN apt install -y gstreamer1.0-nice
-RUN apt-get install -y avahi-utils libnss-mdns \
-   && rm -rf /var/lib/apt/lists/*
-
-RUN python3 -m pip install --upgrade pip
-
-ENV PIP_INDEX_URL=https://pypi.org/simple
-
-RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
-  pyserial \
-  flask \
-  flask_cors \
-  pandas \
-  asyncio-atexit \
-  adafruit-blinka \
-  adafruit-circuitpython-vl53l0x \
-  jetson.GPIO \
-  click \
-  nicegui \
-  smbus2
-
-from stage1 AS stage2
-# Ultralytics YOLO for object detection. --no-deps is critical on Jetson: the
-# default deps would pull a CPU PyTorch wheel and clobber the CUDA torch baked
-# into the base image. We add only the lightweight runtime deps not already
-# present (torch/torchvision/numpy/opencv/pillow/pyyaml/requests/tqdm are in base).
-RUN pip3 install --no-cache-dir --no-deps --index-url https://pypi.org/simple ultralytics \
-  && pip3 install --no-cache-dir --index-url https://pypi.org/simple \
-       psutil py-cpuinfo ultralytics-thop matplotlib scipy \
-  && pip3 install --no-cache-dir --index-url https://pypi.org/simple onnx onnxslim
-
-FROM stage2 AS stage3
-
-#ENTRYPOINT ["/entrypoint.sh"]
-
-RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+# Node + Claude Code for in-container dev
+FROM stage1 AS stage2
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN npm install -g @anthropic-ai/claude-code
-
 RUN echo "source /entrypoint.sh" >> /root/.bashrc
-
-# DOCKER_BUILDKIT=1 docker build -f Dockerfile -t felix:latest .
-# https://www.ros.org/reps/rep-2001.html#id25
-
-# testing
-# python3 -c "import torch,torchvision,cv2,jetson_utils,ultralytics; print('torch',torch.__version__,'cuda',torch.cuda.is_available())"
-# python3 -c "from jetson_utils import videoSource; s=videoSource('csi://0',options={'width':1280,'height':720,'framerate':60}); 
-# print('frame', s.Capture(timeout=3000) is not None)"
-# gst-launch-1.0 nvarguscamerasrc sensor-id=0 num-buffers=3 ! 'video/x-raw(memory:NVMM),width=1280,height=720,framerate=60/1' ! fakesink
-
-# interresting https://docs.ultralytics.com/guides/nvidia-jetson#flash-jetpack-to-nvidia-jetson

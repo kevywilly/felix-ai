@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-import logging 
+import logging
 import sys
 import time
+import faulthandler
+# Dump the C/Python stack of every thread to stderr if a fatal signal
+# (SIGSEGV/SIGABRT/SIGBUS/...) fires. Enabled before torch/cv2/aiortc load so a
+# core dump on exit prints which thread/library faulted (camera vs CUDA vs ...).
+faulthandler.enable()
 from dataclasses import dataclass
-from nicegui import ui
+from nicegui import ui, app
 import asyncio
 import threading
 from felix.motion.joystick import Joystick, JoystickRequest
@@ -51,21 +56,38 @@ state = AppState()
 state.snapshots = robot.get_snapshots("ternary")
 state.autodrive_active = autodrive.is_active
 
-def start_flask():
-    ui.run(title='Robot Control', host="0.0.0.0", port=80, reload=False, )
+# One VideoStream instance so app.on_shutdown can stop it cleanly. It owns its
+# own event loop, so it runs on a dedicated thread (kept here for the join).
+video_stream = VideoStream()
+_video_thread: threading.Thread | None = None
 
-def start_video():
-    VideoStream().run()
-    return
-
-async def main():
-    await asyncio.gather(
+@app.on_startup
+async def _start_background_nodes():
+    # Launch everything on NiceGUI's own event loop, once, after the server
+    # starts. NiceGUI's ui.run() owns the main thread and event loop; spawning
+    # a second asyncio.run() or running ui.run() off-thread makes NiceGUI
+    # re-execute this script (binding 8554 twice, nesting asyncio.run()).
+    global _video_thread
+    _video_thread = threading.Thread(target=video_stream.run, daemon=True)
+    _video_thread.start()
+    for coro in (
         pico.spin(10),
         controller.spin(),
         autodrive.spin(20),
         detector.spin(8),
-        object_seeker.spin(8)
-    )
+        object_seeker.spin(8),
+    ):
+        asyncio.create_task(coro)
+
+@app.on_shutdown
+def _stop_background():
+    # Release the CSI camera (nvargus) + WebRTC server before the process exits.
+    # Without this the daemon thread is killed mid-capture on Ctrl-C and nvargus
+    # tears down abruptly -> core dump. shutdown() flips the serve loop's flag;
+    # the join waits for run()'s finally to call camera.stop() (cap.release()).
+    video_stream.shutdown()
+    if _video_thread is not None:
+        _video_thread.join(timeout=4)
 
 def _apply_lock(x: float, y: float, strafe: bool) -> tuple[float, float, bool]:
     if state.xy_lock:
@@ -100,7 +122,7 @@ def handle_autodrive(e):
     if not state.autodrive_active:
         time.sleep(1)
         controller.stop()
-    capture_buttons.refresh()
+    drive_mode_buttons.refresh()
 
 def handle_seek(e):
     state.seek_active = not state.seek_active
@@ -113,7 +135,7 @@ def handle_seek(e):
     if not state.seek_active:
         time.sleep(1)
         controller.stop()
-    capture_buttons.refresh()
+    drive_mode_buttons.refresh()
 
 def handle_seek_target(label: str):
     state.seek_target = label
@@ -134,35 +156,37 @@ def _on_left_move(e):
 def _on_right_move(e):
     handle_joystick(e.x, e.y, strafe=True)
 
+_BTN_STYLE = 'flex: 1 1 0; min-width: 100px; height: 40px;'
+
 @ui.refreshable
 def capture_buttons():
-    with ui.row().classes('capture-row justify-center items-start mt-4'):
+    with ui.row().classes('capture-row justify-center items-stretch mt-4').style('gap: 8px;'):
         ui.button(f'Left {state.snapshots.get("left",0)}',
                 on_click=lambda: handle_snapshot('left')
-                ).style('flex: 1 1 0; min-width: 100px;')
+                ).style(_BTN_STYLE)
         ui.button(f'Forward {state.snapshots.get("forward",0)}',
                 on_click=lambda: handle_snapshot('forward')
-                ).style('flex: 1 1 0; min-width: 100px;')
+                ).style(_BTN_STYLE)
         ui.button(f'Right {state.snapshots.get("right",0)}',
                 on_click=lambda: handle_snapshot('right')
-                ).style('flex: 1 1 0; min-width: 100px;')
-        ui.button(f'LockXY {"On" if state.xy_lock else "Off"}', 
+                ).style(_BTN_STYLE)
+        ui.button(f'LockXY {"On" if state.xy_lock else "Off"}',
                   on_click=lambda e: handle_xy_lock(e)
-                  ).style('flex: 1 1 0; min-width: 100px;')
-        ui.button(f'AutoDrive {"On" if state.autodrive_active else "Off"}',
-                on_click=lambda e: handle_autodrive(e)
-                ).style('flex: 1 1 0; min-width: 100px;')
+                  ).style(_BTN_STYLE)
         ui.button(f'NavCap {"On" if state.nav_capture else "Off"}',
                 on_click=lambda e: handle_nav_capture(e)
-                ).style('flex: 1 1 0; min-width: 100px;')
+                ).style(_BTN_STYLE)
+
+@ui.refreshable
+def drive_mode_buttons():
+    # AutoDrive + Seek live in the controls column, below the power slider.
+    with ui.row().classes('w-full justify-center items-stretch').style('gap: 8px;'):
+        ui.button(f'AutoDrive {"On" if state.autodrive_active else "Off"}',
+                on_click=lambda e: handle_autodrive(e)
+                ).style('flex: 1 1 0; min-width: 120px; height: 40px;')
         ui.button(f'Seek {"On" if state.seek_active else "Off"}',
                 on_click=lambda e: handle_seek(e)
-                ).style('flex: 1 1 0; min-width: 100px;')
-        ui.select(
-                ['person', 'chair', 'bottle', 'cup', 'sports ball', 'dog', 'cat', 'backpack'],
-                value=state.seek_target,
-                on_change=lambda e: handle_seek_target(e.value),
-                ).props('dense outlined').style('flex: 1 1 0; min-width: 120px;')
+                ).style('flex: 1 1 0; min-width: 120px; height: 40px;')
 
 def power_slider():
     with ui.row().classes('w-full justify-center items-center mt-1 mb-4').style('gap: 12px;'):
@@ -207,9 +231,14 @@ def video_frame():
             box-sizing: border-box;
         }
         </style>
-        ''')
+        ''', sanitize=False)
         with ui.element('div').classes('video-wrap'):
-            ui.html('<iframe src="https://orin1:8554" scrolling="no" allowfullscreen style="width:960px;height:540px"></iframe>')
+            # sanitize=False is required: NiceGUI's ui.html sanitizes by
+            # default and strips <iframe> (and <style>/<script>), which is why
+            # the video area rendered as nothing — no iframe, no gray box.
+            # allow="autoplay" lets this cross-origin iframe (port 8554 vs the
+            # app on 80) autoplay the muted WebRTC video.
+            ui.html('<iframe src="http://orin1:8554" scrolling="no" allow="autoplay; fullscreen" allowfullscreen style="width:960px;height:540px"></iframe>', sanitize=False)
         capture_buttons()
 
 ui.add_head_html('''<style>
@@ -217,44 +246,50 @@ html, body {
     background: #006CA5 !important;
     color: #fff !important;
     margin: 0 !important;
-    padding: 8 !important;
-    overflow: hidden !important;
+    padding: 8px !important;            /* was "8" (no unit) -> ignored */
+    overflow-x: hidden !important;       /* no horizontal scrollbar... */
+    overflow-y: auto !important;         /* ...but let content/menus show */
     height: 100%;
 }
 .main-grid {
-    height: 100vh !important;
     min-height: unset !important;
+}
+/* The global white text above would make dropdown options white-on-white
+   (Quasar menus have a light background), so only the highlighted item shows.
+   Force dark, readable text inside popup menus. */
+.q-menu, .q-menu .q-item, .q-menu .q-item__label {
+    color: #1a1a1a !important;
 }
 </style>''')
 # New layout: video and buttons side by side, joysticks at bottom
-with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 968px minmax(300px, 380px); gap: 16px; align-items: start; width: 100%; min-height: 100vh;'):
+with ui.element('div').classes('main-grid').style('display: grid; grid-template-columns: 968px minmax(280px, 360px); gap: 24px; align-items: start; justify-content: center; width: 100%; padding-top: 8px;'):
     with ui.element('div').classes('video-cell'):
         video_frame()
-    with ui.element('div').classes('controls-cell').style('min-width: 300px; max-width: 380px; height: 100vh; display: flex; align-items: center; justify-content: center;'):
-        with ui.column().classes('joystick-slider-block').style('width: 100%; align-items: center; justify-content: center; gap: 32px;'):
-            # Joysticks in a horizontal row, centered
-            with ui.row().classes('joystick-row').style('width: 100%; justify-content: center; align-items: center; gap: 48px;'):
-                left = ui.joystick(size=100, color='blue', throttle=0.05).style('background: #3895D3; border-radius: 50%;')
-                right = ui.joystick(size=100, color='green', throttle=0.05).style('background: #3895D3; border-radius: 50%;')
-            left.on_move(_on_left_move)
-            left.on_end(lambda: handle_joystick(0, 0, strafe=False))
-            right.on_move(_on_right_move)
-            right.on_end(lambda: handle_joystick(0, 0, strafe=True))
-            # Power slider directly under joysticks, centered
-            with ui.row().classes('w-full').style('justify-content: center; align-items: center; margin-top: 16px;'):
-                power_slider()
+    # Controls vertically centered next to the video (height matches the 548px
+    # video box, so the joysticks line up with the video's vertical center).
+    with ui.element('div').classes('controls-cell').style('min-width: 280px; max-width: 360px; height: 548px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;'):
+        # Joysticks in a horizontal row, centered
+        with ui.row().classes('joystick-row').style('width: 100%; justify-content: center; align-items: center; gap: 40px;'):
+            left = ui.joystick(size=100, color='blue', throttle=0.05).style('background: #3895D3; border-radius: 50%;')
+            right = ui.joystick(size=100, color='green', throttle=0.05).style('background: #3895D3; border-radius: 50%;')
+        left.on_move(_on_left_move)
+        left.on_end(lambda: handle_joystick(0, 0, strafe=False))
+        right.on_move(_on_right_move)
+        right.on_end(lambda: handle_joystick(0, 0, strafe=True))
+        # Seek-target selector (roomy spot so its dropdown isn't clipped).
+        with ui.row().classes('w-full justify-center items-center').style('gap: 8px;'):
+            ui.label('Seek target').classes('text-sm')
+            ui.select(
+                ['person', 'chair', 'bottle', 'cup', 'sports ball', 'dog', 'cat', 'backpack'],
+                value=state.seek_target,
+                on_change=lambda e: handle_seek_target(e.value),
+            ).props('dense outlined options-dense').style('min-width: 160px;')
+        # Power slider, then the AutoDrive / Seek toggles below it.
+        power_slider()
+        drive_mode_buttons()
 
-if __name__ == "__main__":
-    try:
-        video_thread = threading.Thread(target=start_video)
-        video_thread.daemon = True
-        video_thread.start()
-
-        flask_thread = threading.Thread(target=start_flask)
-        flask_thread.daemon = True
-        flask_thread.start()
-
-        asyncio.run(main())
-    finally:
-        video_thread.join()
-        flask_thread.join()
+# NiceGUI re-imports this module as "__mp_main__" in its server process, so
+# guard on both names. ui.run() blocks on the main thread and owns the loop;
+# background work is started from app.on_startup above.
+if __name__ in {"__main__", "__mp_main__"}:
+    ui.run(title='Robot Control', host="0.0.0.0", port=80, reload=False)

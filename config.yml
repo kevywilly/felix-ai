@@ -37,7 +37,11 @@ model:
   roi_vertical_offset: 0.4
   roi_horizontal_offset: 1.0
 camera:
-  sensor_mode: 3
+  # mode 4 = 1280x720 @ 59fps (16:9). Matches the 960x540 (16:9) output so the
+  # frame isn't stretched. Mode 3 (1640x1232, 4:3) gave a wider FOV but squeezed
+  # into 16:9. CameraCapture publishes this frame to the model/detector too, so
+  # the aspect must stay consistent with the obstacle-avoidance training data.
+  sensor_mode: 4
   fov: 160
 camera_calibration: 
   image_width: 1640

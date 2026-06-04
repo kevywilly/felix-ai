@@ -3,7 +3,14 @@
     "allow": [
       "Bash(jupyter nbconvert *)",
       "Bash(python3 -c \"import json,sys; nb=json.load\\(open\\('extras/notebooks/yolo.ipynb'\\)\\); [print\\(''.join\\(c['source']\\)+'\\\\n---'\\) for c in nb['cells'] if c['cell_type']=='code']\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(pip3 install *)",
+      "Bash(git config *)",
+      "Bash(docker --version)",
+      "Bash(command -v docker)",
+      "Bash(command -v podman)",
+      "Read(//usr/bin/**)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
