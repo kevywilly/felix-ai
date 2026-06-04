@@ -240,7 +240,10 @@ class BinaryObstacleAvoider(AutoDriver):
     FORWARD = 1
 
     def __init__(self, **kwargs):
-        super().__init__(model_file=settings.TRAINING.training_model_path, num_targets=2, **kwargs)
+        # Use settings.model_file (not training_model_path) so inference loads the
+        # exact file the trainer wrote — settings.model_file carries the `roi_` prefix
+        # when model_use_roi is on, matching the ROI-cropped preprocessing below.
+        super().__init__(model_file=settings.model_file, num_targets=2, **kwargs)
         self.status = self.NA
 
     def predict(self, input) -> Twist:
@@ -275,7 +278,10 @@ class TernaryObstacleAvoider(AutoDriver):
     _right = 2
 
     def __init__(self, **kwargs):
-        super().__init__(model_file=settings.TRAINING.training_model_path, num_targets=3, **kwargs)
+        # Use settings.model_file (not training_model_path) so inference loads the
+        # exact file the trainer wrote — settings.model_file carries the `roi_` prefix
+        # when model_use_roi is on, matching the ROI-cropped preprocessing below.
+        super().__init__(model_file=settings.model_file, num_targets=3, **kwargs)
         self.direction = Direction.FORWARD
 
     def predict(self, input) -> Twist:
