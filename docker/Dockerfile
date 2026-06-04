@@ -1,5 +1,7 @@
 #FROM ai-base:latest as stage1
-FROM dustynv/nano_llm:r36.4.0 AS stage1
+# jetson-inference brings jetson_utils (videoSource/videoOutput WebRTC, cudaToNumpy)
+# + torch/torchvision, without the nano_llm/VILA LLM stack. See video_agent.py.
+FROM dustynv/jetson-inference:r36.4.0 AS stage1
 
 ENV CUDA_HOME=/usr/local/cuda
 
@@ -38,9 +40,23 @@ RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   nicegui \
   smbus2
 
+# Ultralytics YOLO for object detection. --no-deps is critical on Jetson: the
+# default deps would pull a CPU PyTorch wheel and clobber the CUDA torch baked
+# into the base image. We add only the lightweight runtime deps not already
+# present (torch/torchvision/numpy/opencv/pillow/pyyaml/requests/tqdm are in base).
+RUN pip3 install --no-cache-dir --no-deps ultralytics \
+  && pip3 install --no-cache-dir psutil py-cpuinfo ultralytics-thop
+
 FROM stage1 AS stage2
 
 #ENTRYPOINT ["/entrypoint.sh"]
+
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g @anthropic-ai/claude-code
 
 RUN echo "source /entrypoint.sh" >> /root/.bashrc
 

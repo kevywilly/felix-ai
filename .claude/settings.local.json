@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(jupyter nbconvert *)",
+      "Bash(python3 -c \"import json,sys; nb=json.load\\(open\\('extras/notebooks/yolo.ipynb'\\)\\); [print\\(''.join\\(c['source']\\)+'\\\\n---'\\) for c in nb['cells'] if c['cell_type']=='code']\")",
+      "Bash(python3 *)"
+    ]
+  }
+}

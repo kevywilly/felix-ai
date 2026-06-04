@@ -36,9 +36,12 @@ autodrive = TernaryObstacleAvoider()
 #    from felix.nodes.autodriver import BinaryObstacleAvoider
 #    autodrive = BinaryObstacleAvoider()
 
+from felix.nodes.detector import Detector
+
 controller = Controller(frequency=30)
 pico = PicoSensors()
 robot = Robot()
+detector = Detector(frequency=8)  # perception only: publishes Topics.detections
 
 state = AppState()
 state.snapshots = robot.get_snapshots("ternary")
@@ -54,8 +57,9 @@ def start_video():
 async def main():
     await asyncio.gather(
         pico.spin(10),
-        controller.spin(), 
-        autodrive.spin(20)
+        controller.spin(),
+        autodrive.spin(20),
+        detector.spin(8)
     )
 
 def _apply_lock(x: float, y: float, strafe: bool) -> tuple[float, float, bool]:

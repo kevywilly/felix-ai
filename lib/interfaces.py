@@ -259,3 +259,59 @@ class Prediction:
     def __str__(self):
         return (f"Prediction(source={self.source}, left={self.left}, "
                 f"right={self.right}, forward={self.forward}, ts={self.ts})")
+
+
+@dataclass
+class Detection:
+    """A single detected object. Box corners are normalized to [0,1]."""
+    label: str
+    confidence: float
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+    @property
+    def cx(self) -> float:
+        return (self.x1 + self.x2) / 2.0
+
+    @property
+    def cy(self) -> float:
+        return (self.y1 + self.y2) / 2.0
+
+    @property
+    def area(self) -> float:
+        return max(0.0, self.x2 - self.x1) * max(0.0, self.y2 - self.y1)
+
+    @property
+    def dict(self):
+        return {
+            "label": self.label,
+            "confidence": self.confidence,
+            "x1": self.x1,
+            "y1": self.y1,
+            "x2": self.x2,
+            "y2": self.y2,
+        }
+
+    def __str__(self):
+        return (f"Detection(label={self.label}, conf={self.confidence:.2f}, "
+                f"box=[{self.x1:.3f},{self.y1:.3f},{self.x2:.3f},{self.y2:.3f}])")
+
+
+@dataclass
+class DetectionFrame:
+    """All detections from one frame, plus the source frame dimensions."""
+    detections: list
+    width: int
+    height: int
+    ts: int
+
+    @property
+    def dict(self):
+        return {
+            "detections": [d.dict for d in self.detections],
+            "width": self.width,
+            "height": self.height,
+            "ts": self.ts,
+        }

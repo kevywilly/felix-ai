@@ -13,3 +13,4 @@ class Topics:
     prediction = signal('prediction')
     pico_sensors = signal('pico_sensors')
     nav_capture = signal('nav_capture')
+    detections = signal('detections')
