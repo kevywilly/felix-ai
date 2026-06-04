@@ -25,6 +25,8 @@ class AppState:
     autodrive_active: bool = False
     snapshots = {"left": 0, "forward": 0, "right": 0 }
     nav_capture: bool = False
+    seek_active: bool = False
+    seek_target: str = "person"
 
 from felix.nodes.autodriver import TernaryObstacleAvoider
 autodrive = TernaryObstacleAvoider()
@@ -37,11 +39,13 @@ autodrive = TernaryObstacleAvoider()
 #    autodrive = BinaryObstacleAvoider()
 
 from felix.nodes.detector import Detector
+from felix.nodes.object_seeker import ObjectSeeker
 
 controller = Controller(frequency=30)
 pico = PicoSensors()
 robot = Robot()
 detector = Detector(frequency=8)  # perception only: publishes Topics.detections
+object_seeker = ObjectSeeker(target_label="person")  # detections -> cmd_vel
 
 state = AppState()
 state.snapshots = robot.get_snapshots("ternary")
@@ -59,7 +63,8 @@ async def main():
         pico.spin(10),
         controller.spin(),
         autodrive.spin(20),
-        detector.spin(8)
+        detector.spin(8),
+        object_seeker.spin(8)
     )
 
 def _apply_lock(x: float, y: float, strafe: bool) -> tuple[float, float, bool]:
@@ -86,12 +91,33 @@ def handle_snapshot(label: str):
 
 def handle_autodrive(e):
     state.autodrive_active = not autodrive.is_active
-    controller.stop() 
+    # mutual exclusion: only one driver may command the robot at a time
+    if state.autodrive_active and state.seek_active:
+        state.seek_active = False
+        object_seeker.activate(False)
+    controller.stop()
     Topics.autodrive.send("felix")
     if not state.autodrive_active:
         time.sleep(1)
         controller.stop()
     capture_buttons.refresh()
+
+def handle_seek(e):
+    state.seek_active = not state.seek_active
+    # mutual exclusion: turn autodrive off if we're enabling seek
+    if state.seek_active and autodrive.is_active:
+        state.autodrive_active = False
+        Topics.autodrive.send("felix")
+    controller.stop()
+    object_seeker.activate(state.seek_active)
+    if not state.seek_active:
+        time.sleep(1)
+        controller.stop()
+    capture_buttons.refresh()
+
+def handle_seek_target(label: str):
+    state.seek_target = label
+    object_seeker.set_target(label)
 
 def handle_nav_capture(e):
     state.nav_capture = not state.nav_capture
@@ -129,6 +155,14 @@ def capture_buttons():
         ui.button(f'NavCap {"On" if state.nav_capture else "Off"}',
                 on_click=lambda e: handle_nav_capture(e)
                 ).style('flex: 1 1 0; min-width: 100px;')
+        ui.button(f'Seek {"On" if state.seek_active else "Off"}',
+                on_click=lambda e: handle_seek(e)
+                ).style('flex: 1 1 0; min-width: 100px;')
+        ui.select(
+                ['person', 'chair', 'bottle', 'cup', 'sports ball', 'dog', 'cat', 'backpack'],
+                value=state.seek_target,
+                on_change=lambda e: handle_seek_target(e.value),
+                ).props('dense outlined').style('flex: 1 1 0; min-width: 120px;')
 
 def power_slider():
     with ui.row().classes('w-full justify-center items-center mt-1 mb-4').style('gap: 12px;'):

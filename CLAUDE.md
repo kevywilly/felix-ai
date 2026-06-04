@@ -17,7 +17,11 @@ The app is designed to run **inside a Docker container** on the Jetson, mounting
 python3 app.py                                 # run the app directly (inside container)
 ```
 
-`app.py` is the entry point. It serves a **NiceGUI** web control panel on port **80**, spins the async nodes (`controller`, `pico`, `autodrive`), and runs a WebRTC video stream (`VideoStream`) on a background thread. The UI embeds the camera feed from `https://orin1:8554`.
+For the object-detection / Seek feature (YOLO model setup, rebuild, usage, troubleshooting), see **`DETECTION.md`** — the authoritative runbook.
+
+`app.py` is the entry point. It serves a **NiceGUI** web control panel on port **80**, spins the async nodes (`controller`, `pico`, `autodrive`, `detector`, `object_seeker`), and runs a WebRTC video stream (`VideoStream`) on a background thread. The UI embeds the camera feed from `https://orin1:8554`.
+
+The Docker base image is **`dustynv/jetson-inference:r36.4.0`** (`docker/Dockerfile`), which provides `jetson_utils` (the `videoSource`/`videoOutput` WebRTC pipeline `VideoStream` uses) plus PyTorch/torchvision. The earlier `dustynv/nano_llm` base — and the VILA/VLM stack — was dropped; the only remaining `nano_llm` imports live in unused `felix/nodes/video.py` and `felix/nodes/chat.py` (not loaded by `nodes/__init__.py` or `app.py`). Ultralytics is installed `--no-deps` so it can't overwrite the base image's CUDA PyTorch.
 
 Hardware is reached through fixed device symlinks created by udev rules (see `SETUP.md`, `docker/rules/`): `/dev/myserial` (Yahboom/Rosmaster motor controller, CH341 USB-serial), `/dev/mypico` (Raspberry Pi Pico sensors, 115200 baud), plus `/dev/i2c-*` and `/dev/video*`. Running outside the Jetson without these devices will fail at node construction (serial open, camera init).
 
@@ -59,6 +63,12 @@ Example flow: joystick move → `Joystick.get_twist()` → `Topics.cmd_vel.send(
 - **`autodriver.py` (`AutoDriver` → `TernaryObstacleAvoider` / `BinaryObstacleAvoider`)**: loads the trained torchvision model onto CUDA, runs inference on ROI-cropped frames, publishes `Topics.prediction`, and issues `cmd_vel` to avoid obstacles. Toggled on/off via `Topics.autodrive`.
 - **`pico.py` (`PicoSensors`)**: reads JSON sensor lines (ToF/IR) from `/dev/mypico`, publishes `Topics.pico_sensors`.
 - **`robot.py` (`Robot`)**: holds the latest JPEG frame and brokers image **snapshot/tag collection** for building training datasets (via `ImageCollector`).
+- **`detector.py` (`Detector`)**: Ultralytics **YOLO** (TensorRT `.engine`, falls back to `.pt`) subscribing to `raw_image`. Runs slower than capture (~8 Hz), publishes `Topics.detections` (`DetectionFrame` of normalized-`[0,1]` boxes). **Perception only — never drives.** Degrades to a no-op with a warning if ultralytics or the model file is absent.
+- **`object_seeker.py` (`ObjectSeeker`)**: object-seeking **behavior**. Subscribes to `Topics.detections`, locks onto the largest box matching `target_label`, and steers toward it via `cmd_vel`. Mirrors `NavRequest.target`'s sign convention (`x_rel = 2·cx−1`, `y_rel = 1−cy`) scaled by the autodrive gains. ToF veto zeroes forward velocity when `pico_sensors` ToF reads an obstacle closer than `settings.TOF_THRESHOLD` (rotates to keep target centered but won't advance). Fails safe: no target ⇒ one stop command.
+
+### Detection + seek subsystem
+
+`Detector` (perceive) and `ObjectSeeker` (act) are decoupled through `Topics.detections` — the detector nominates boxes, the seeker decides motion. `app.py` enforces **single-driver mutual exclusion**: enabling Seek disables AutoDrive and vice-versa (both also cleared by `Topics.stop`), so only one source ever commands `cmd_vel`. The UI exposes a Seek toggle + a target-class `select`. Detection runs on **YOLO** (Ultralytics, in the container) — it needs a model at `model_root` (`/data/felix/models/`); without one, detection (and therefore seek) is a safe no-op. **See `DETECTION.md` for the authoritative build/model/run runbook** (container rebuild, `.pt` quick-start vs TensorRT `.engine` export, usage, and troubleshooting).
 
 ### Vehicle kinematics (`lib/vehicles/`)
 

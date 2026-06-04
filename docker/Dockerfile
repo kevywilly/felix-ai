@@ -1,7 +1,8 @@
 #FROM ai-base:latest as stage1
 # jetson-inference brings jetson_utils (videoSource/videoOutput WebRTC, cudaToNumpy)
 # + torch/torchvision, without the nano_llm/VILA LLM stack. See video_agent.py.
-FROM dustynv/jetson-inference:r36.4.0 AS stage1
+# run this first then get the image jetson-contaners build jetson-inference #from source, so we get the latest and greatest CUDA-optimized PyTorch, and the latest jetson-utils with WebRTC support. The base image also has OpenCV
+FROM jetson-inference:jetson-inference:r36.4.0 AS stage1
 
 ENV CUDA_HOME=/usr/local/cuda
 
@@ -27,6 +28,9 @@ RUN apt-get install -y avahi-utils libnss-mdns \
    && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
+
+ENV PIP_INDEX_URL=https://pypi.org/simple
+
 RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   pyserial \
   flask \
@@ -40,14 +44,17 @@ RUN pip3 install --no-cache-dir --verbose --index-url https://pypi.org/simple \
   nicegui \
   smbus2
 
+from stage1 AS stage2
 # Ultralytics YOLO for object detection. --no-deps is critical on Jetson: the
 # default deps would pull a CPU PyTorch wheel and clobber the CUDA torch baked
 # into the base image. We add only the lightweight runtime deps not already
 # present (torch/torchvision/numpy/opencv/pillow/pyyaml/requests/tqdm are in base).
-RUN pip3 install --no-cache-dir --no-deps ultralytics \
-  && pip3 install --no-cache-dir psutil py-cpuinfo ultralytics-thop
+RUN pip3 install --no-cache-dir --no-deps --index-url https://pypi.org/simple ultralytics \
+  && pip3 install --no-cache-dir --index-url https://pypi.org/simple \
+       psutil py-cpuinfo ultralytics-thop matplotlib scipy \
+  && pip3 install --no-cache-dir --index-url https://pypi.org/simple onnx onnxslim
 
-FROM stage1 AS stage2
+FROM stage2 AS stage3
 
 #ENTRYPOINT ["/entrypoint.sh"]
 
@@ -62,3 +69,11 @@ RUN echo "source /entrypoint.sh" >> /root/.bashrc
 
 # DOCKER_BUILDKIT=1 docker build -f Dockerfile -t felix:latest .
 # https://www.ros.org/reps/rep-2001.html#id25
+
+# testing
+# python3 -c "import torch,torchvision,cv2,jetson_utils,ultralytics; print('torch',torch.__version__,'cuda',torch.cuda.is_available())"
+# python3 -c "from jetson_utils import videoSource; s=videoSource('csi://0',options={'width':1280,'height':720,'framerate':60}); 
+# print('frame', s.Capture(timeout=3000) is not None)"
+# gst-launch-1.0 nvarguscamerasrc sensor-id=0 num-buffers=3 ! 'video/x-raw(memory:NVMM),width=1280,height=720,framerate=60/1' ! fakesink
+
+# interresting https://docs.ultralytics.com/guides/nvidia-jetson#flash-jetpack-to-nvidia-jetson
