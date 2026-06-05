@@ -42,6 +42,12 @@ class ObjectSeeker(BaseNode):
         Topics.detections.connect(self._on_detections)
         Topics.pico_sensors.connect(self._on_pico_sensors)
         Topics.stop.connect(self._on_stop)
+        # Activation/target arrive as signals so they reach the instance that is
+        # actually being spun (app.py constructs nodes twice; a direct method
+        # call would only reach the UI-side copy and never drive). See
+        # test/test_object_seeker_signal.py.
+        Topics.seek.connect(self._on_seek)
+        Topics.seek_target.connect(self._on_seek_target)
 
         self.loaded()
 
@@ -58,7 +64,13 @@ class ObjectSeeker(BaseNode):
         self.is_active = False
         self._driving = False
 
-    # ---- control surface (called directly by the UI) -------------------
+    def _on_seek(self, sender, payload: bool):
+        self.activate(bool(payload))
+
+    def _on_seek_target(self, sender, payload: str):
+        self.set_target(payload)
+
+    # ---- control surface (driven via Topics.seek / Topics.seek_target) --
 
     def set_target(self, label: str):
         self.target_label = label

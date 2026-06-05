@@ -131,7 +131,10 @@ def handle_seek(e):
         state.autodrive_active = False
         Topics.autodrive.send("felix")
     controller.stop()
-    object_seeker.activate(state.seek_active)
+    # Signal (not object_seeker.activate()): the module is instantiated twice and
+    # only the signal reaches the spun seeker. A direct call flips the UI-side
+    # copy, which is never spun, so the robot never drives. See object_seeker.py.
+    Topics.seek.send("felix", payload=state.seek_active)
     if not state.seek_active:
         time.sleep(1)
         controller.stop()
@@ -139,7 +142,7 @@ def handle_seek(e):
 
 def handle_seek_target(label: str):
     state.seek_target = label
-    object_seeker.set_target(label)
+    Topics.seek_target.send("felix", payload=label)
 
 def handle_nav_capture(e):
     state.nav_capture = not state.nav_capture
