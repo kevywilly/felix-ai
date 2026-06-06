@@ -48,6 +48,7 @@ class PicoSensors(BaseNode):
                     data = json.loads(line)
                     reading = SensorReading.from_json(data)
                     Topics.pico_sensors.send(payload=reading)
+                    print(reading)
                     self.logger.debug(reading)
                     #if reading.value < 250:
             except json.JSONDecodeError as e:

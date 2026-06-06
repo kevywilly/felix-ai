@@ -135,9 +135,13 @@ class Quarternion(Vector4):
 
 
 class Twist(DataModel):
-    def __init__(self, linear=Vector3(0, 0, 0), angular=Vector3(0, 0, 0)):
-        self.linear = linear
-        self.angular = angular
+    def __init__(self, linear=None, angular=None):
+        # NB: do not default to shared Vector3() instances. Mutable default
+        # arguments are evaluated once, so every bare Twist() would alias the
+        # same linear/angular vectors -- mutating one ``Twist().linear.x`` then
+        # corrupts every other "zero" Twist (including stop commands).
+        self.linear = linear if linear is not None else Vector3(0, 0, 0)
+        self.angular = angular if angular is not None else Vector3(0, 0, 0)
 
     def copy(self):
         return Twist(linear=self.linear.copy(), angular=self.angular.copy())

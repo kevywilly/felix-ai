@@ -1,8 +1,11 @@
 from abc import abstractmethod
 from typing import Any
 
+import time
+
 from felix.vision.roi_utils import apply_roi_crop
-from lib.interfaces import SensorReading, Twist
+from lib.interfaces import SensorReading, Twist, Vector3
+from lib.motion import TwistSmoother
 from lib.nodes.base import BaseNode
 import torch
 import torchvision
@@ -51,6 +54,10 @@ class AutoDriver(BaseNode):
         self.model_file = model_file
         self.num_targets = num_targets
 
+        # Shared output smoother (slew-limits accel/decel; stops snap to zero).
+        self.smoother = TwistSmoother()
+        self._last_spin: float | None = None
+
         Topics.raw_image.connect(self._on_raw_image)
         Topics.autodrive.connect(self._on_autodrive)
         Topics.stop.connect(self._on_stop)
@@ -86,11 +93,14 @@ class AutoDriver(BaseNode):
     def _on_autodrive(self, sender, **kwargs):
         self.logger.info("AutoDrive signal received")
         self.is_active = not self.is_active
+        if not self.is_active:
+            self.smoother.reset()
         self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
     def _on_stop(self, sender, **kwargs):
         self.logger.info("Stop signal received, deactivating autodrive.")
         self.is_active = False
+        self.smoother.reset()
         self.logger.info(f"AutoDrive is_active: {self.is_active}")
 
     @property
@@ -155,17 +165,36 @@ class AutoDriver(BaseNode):
         self.logger.info(f"Created model: {settings.model_type.value}")
         return model
 
+    def _dt(self) -> float:
+        now = time.monotonic()
+        prev = self._last_spin
+        self._last_spin = now
+        if prev is None:
+            return 1.0 / max(self.frequency, 1)
+        return min(max(now - prev, 1e-3), 0.5)
+
     def spinner(self):
         if self.is_active and self.raw_image is not None:
             if DEBUG:
                 print("Autodrive active, making prediction...")
             try:
                 cmd = self.predict(self.raw_image)
+                # Smooth the command stream so discrete forward<->turn decisions
+                # ramp instead of snapping (zero/stop snaps through immediately).
+                vx, vy, wz = self.smoother.smooth(
+                    cmd.linear.x, cmd.linear.y, cmd.angular.z, self._dt(),
+                    settings.AUTODRIVE_SLEW_LINEAR, settings.AUTODRIVE_SLEW_ANGULAR,
+                )
+                cmd = Twist(linear=Vector3(vx, vy, 0.0), angular=Vector3(0.0, 0.0, wz))
                 self.logger.info(f"AutoDrive: {cmd}")
                 Topics.cmd_vel.send("autodrive", payload=cmd)
             except Exception as ex:  # noqa: E722
                 self.logger.info(f"Autodrive error: {ex}. Stopping")
-                Topics.cmd_vel.send("autodrive", payload=Twist())
+                self.smoother.reset()
+                Topics.cmd_vel.send(
+                    "autodrive",
+                    payload=Twist(linear=Vector3(0, 0, 0), angular=Vector3(0, 0, 0)),
+                )
                 Topics.stop.send("autodrive")
                 raise ex
 

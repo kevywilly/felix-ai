@@ -107,9 +107,34 @@ class AppSettings:
             .get('data')
         ).reshape(3,3)
 
-        self.autodrive_linear = config.get('autodrive',{}).get('linear',0.2)
-        self.autodrive_angular = config.get('autodrive',{}).get('angular',0.5)
+        autodrive = config.get('autodrive', {})
+        self.autodrive_linear = autodrive.get('linear', 0.2)
+        self.autodrive_angular = autodrive.get('angular', 0.5)
+        # Output slew limits (units/sec) for AutoDrive's command stream, applied
+        # via the shared lib.motion.TwistSmoother. Generous defaults keep the
+        # response near-instant (~1-2 ticks at 20 Hz); lower them for a gentler,
+        # less jerky ride. Stops (zero twist) always snap immediately.
+        self.AUTODRIVE_SLEW_LINEAR = autodrive.get('slew_linear', 3.0)
+        self.AUTODRIVE_SLEW_ANGULAR = autodrive.get('slew_angular', 12.0)
         self.nav_capture_frequency_seconds = config.get('nav_capture_frequency_seconds', 2)
+
+        # Object-seek follow tuning. linear/angular fall back to the autodrive
+        # gains so the seeker behaves as before when no `seek:` block is present.
+        seek = config.get('seek', {})
+        self.SEEK_LINEAR = seek.get('linear', self.autodrive_linear)
+        self.SEEK_ANGULAR = seek.get('angular', self.autodrive_angular)
+        self.SEEK_STRAFE = seek.get('strafe', 0.4)
+        self.SEEK_DEADBAND = seek.get('deadband', 0.06)
+        self.SEEK_EMA_ALPHA = seek.get('ema_alpha', 0.5)
+        self.SEEK_YAW_CROSSOVER = seek.get('yaw_crossover', 0.35)
+        self.SEEK_SLEW_LINEAR = seek.get('slew_linear', 1.5)
+        self.SEEK_SLEW_ANGULAR = seek.get('slew_angular', 5.0)
+        self.SEEK_MIN_CONFIDENCE = seek.get('min_confidence', 0.0)
+        self.SEEK_LOCK_DIST = seek.get('lock_max_center_dist', 0.2)
+        self.SEEK_COAST_FRAMES = seek.get('coast_frames', 3)
+        self.SEEK_LOST_TIMEOUT = seek.get('lost_timeout', 0.5)
+        self.SEEK_TOF_STOP_MM = self.TOF_THRESHOLD
+        self.SEEK_TOF_SLOW_MM = self.TOF_THRESHOLD + seek.get('tof_slow_margin_mm', 300)
         
         self.DEBUG: bool = config.get('debug', False)
 

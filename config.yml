@@ -22,6 +22,30 @@ nav_capture_frequency_seconds: 0.5
 autodrive:
   linear: 0.32
   angular: 1.0
+  # Output smoothing (units/sec) via the shared TwistSmoother. High = near-instant
+  # (default, ~unchanged behaviour); lower these for a gentler ride. Stops snap.
+  slew_linear: 3.0
+  slew_angular: 12.0
+seek:
+  # Object-seek follow tuning (felix/nodes/object_seeker.py). linear/angular
+  # default to the autodrive gains when omitted, so behaviour is unchanged
+  # unless these are set.
+  linear: 0.32            # forward gain (toward target)
+  angular: 1.0            # yaw gain (re-aim camera for large lateral error)
+  strafe: 0.4             # lateral gain — slide to centre without yawing. Sign
+                          # follows the codebase convention +y=left / -y=right
+                          # (REP-103), confirmed by autodriver.py's evade branch:
+                          # a target on the right strafes right.
+  deadband: 0.06          # |x_rel| below this -> no lateral/yaw correction (kills hunting)
+  ema_alpha: 0.5          # error smoothing 0<a<=1 (1.0 = no smoothing)
+  yaw_crossover: 0.35     # |x_rel| above this also yaws to re-aim; below = strafe only
+  slew_linear: 1.5        # max change in linear cmd per second (smooth accel/decel)
+  slew_angular: 5.0       # max change in angular cmd per second
+  min_confidence: 0.0     # ignore detections below this confidence (0 = trust detector)
+  lock_max_center_dist: 0.2   # keep the same target if a match stays within this (sticky lock)
+  coast_frames: 3         # ride last command through this many missed detections (anti-judder)
+  lost_timeout: 0.5       # seconds with no fresh detections -> hard stop (watchdog)
+  tof_slow_margin_mm: 300 # start slowing this far above the stop threshold (graduated veto)
 training:
   mode: ternary
   data_root:          &root /data/felix
