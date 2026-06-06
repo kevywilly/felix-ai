@@ -46,6 +46,10 @@ seek:
   coast_frames: 3         # ride last command through this many missed detections (anti-judder)
   lost_timeout: 0.5       # seconds with no fresh detections -> hard stop (watchdog)
   tof_slow_margin_mm: 300 # start slowing this far above the stop threshold (graduated veto)
+  lidar_stop_mm: 300       # forward speed = 0 at this distance
+  lidar_slow_mm: 700       # forward speed = full at this distance
+  lidar_stale_sec: 0.5     # treat older readings as unreliable
+  
 training:
   mode: ternary
   data_root:          &root /data/felix

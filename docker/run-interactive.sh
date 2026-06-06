@@ -61,15 +61,19 @@ if [ $ARCH = "aarch64" ]; then
 		--volume ${HOME}/.claude-felix:/.claude \
 		--device /dev/snd \
 		--device /dev/bus/usb \
+		--device /dev/rplidar \
 		--device /dev/myserial \
 		--device /dev/mypico \
-		--device /dev/ttyUSB0 \
-		--device /dev/ttyACM0 \
 		--device /dev/i2c-1 \
 		--device /dev/i2c-2 \
 		--device /dev/i2c-7 \
 		$DATA_VOLUME $DISPLAY_DEVICE $V4L2_DEVICES \
 		"$@"
+
+		# --device /dev/myserial 
+		# --device /dev/mypico 
+		#--device /dev/ttyACM0 
+		#--device /dev/ttyUSB0 
 
 elif [ $ARCH = "x86_64" ]; then
 

@@ -78,7 +78,8 @@ class Direction(Enum):
     LEFT = 1
     RIGHT = 2
     BACKWARD = 3
-    
+
+
 class Controller(BaseNode):
 
     def __init__(self, publish_frequency_hz=10, **kwargs):
@@ -89,14 +90,22 @@ class Controller(BaseNode):
         self.cmd_vel = Twist()
         self.prev_cmd_vel = Twist()
         self.vehicle = settings.VEHICLE
-        self._bot = Rosmaster(car_type=2, com=self.vehicle.yaboom_port)
-        self._bot.create_receive_threading()
+
+        # IMPORTANT: do NOT open Rosmaster (which opens the yaboom serial port
+        # and spawns a receive thread) here. NiceGUI re-imports this module in
+        # its server process, instantiating Controller twice. Two Rosmaster
+        # instances on the same serial port would corrupt IMU data and lose
+        # motor commands. Open the device on first spinner() call instead, so
+        # only the spun instance owns the hardware. Same pattern as
+        # LidarSensor / autodrive_lidar.
+        self._bot: Optional[Rosmaster] = None
+        self._hardware_started = False
+
         self._running = False
         self._nav_target: Optional[Odometry] = None
 
         self.tof: dict[int, int] = {}
         self.prev_tof: dict[int, int] = {}
-
 
         self.attitude_data = np.zeros(3)
         self.magnometer_data = np.zeros(3)
@@ -120,6 +129,21 @@ class Controller(BaseNode):
         self._connect_signals()
 
         self.loaded()
+        self.logger.info("Controller instance created (Rosmaster deferred until spin)")
+
+    def _ensure_hardware_started(self):
+        """Open Rosmaster on first spinner() call. Only the spun instance
+        does this; the duplicate created by NiceGUI's module re-import
+        never spins, so it never touches the serial port."""
+        if self._hardware_started:
+            return
+        self._hardware_started = True
+        self._bot = Rosmaster(car_type=2, com=self.vehicle.yaboom_port)
+        self._bot.create_receive_threading()
+        self.logger.info(
+            f"Rosmaster opened on {self.vehicle.yaboom_port} "
+            f"(this is the spun Controller instance)"
+        )
 
     def print_stats(self):
         self.logger.info(
@@ -147,7 +171,7 @@ class Controller(BaseNode):
         self.prev_tof = self.tof.copy()
         self.tof[payload.id] = int(payload.value)
         self.logger.debug(f"tof: {payload.id} = {payload.value}")
-        
+
     def _on_stop_signal(self, sender, **kwargs):
         self.stop()
 
@@ -167,6 +191,8 @@ class Controller(BaseNode):
             self.logger.info(f"Navigation image capture enabled, session id: {self.capture_session_id}")
 
     def get_imu_data(self):
+        if self._bot is None:
+            return
         self.attitude_data = Vector3.from_tuple(self._bot.get_imu_attitude_data())
         self.magnometer_data = Vector3.from_tuple(self._bot.get_magnetometer_data())
         self.gyroscope_data = Vector3.from_tuple(self._bot.get_gyroscope_data())
@@ -185,50 +211,55 @@ class Controller(BaseNode):
                     return
                 if not self.tof or not self.prev_tof:
                     return
-                
+
                 image = ImageUtils.bgr8_to_jpeg(self.camera_image)
                 self.logger.info("Capturing nav image")
                 try:
-                    values = [self.prev_tof[0], 
+                    values = [self.prev_tof[0],
                         self.prev_tof[1],
                         _normalize_velocity(self.prev_cmd_vel.linear.x),
                         _normalize_velocity(self.prev_cmd_vel.linear.y),
                         _normalize_velocity(self.prev_cmd_vel.angular.z),
-                        self.tof[0], 
-                        self.tof[1], 
-                        _normalize_velocity(self.cmd_vel.linear.x), 
+                        self.tof[0],
+                        self.tof[1],
+                        _normalize_velocity(self.cmd_vel.linear.x),
                         _normalize_velocity(self.cmd_vel.linear.y),
                         _normalize_velocity(self.cmd_vel.angular.z)]
-                    
+
                     saved = self._image_collector.save_navigation_image(
-                        [self.prev_tof[0], 
+                        [self.prev_tof[0],
                         self.prev_tof[1],
                         _normalize_velocity(self.prev_cmd_vel.linear.x),
                         _normalize_velocity(self.prev_cmd_vel.linear.y),
                         _normalize_velocity(self.prev_cmd_vel.angular.z),
-                        self.tof[0], 
-                        self.tof[1], 
-                        _normalize_velocity(self.cmd_vel.linear.x), 
+                        self.tof[0],
+                        self.tof[1],
+                        _normalize_velocity(self.cmd_vel.linear.x),
                         _normalize_velocity(self.cmd_vel.linear.y),
-                        _normalize_velocity(self.cmd_vel.angular.z)], 
+                        _normalize_velocity(self.cmd_vel.angular.z)],
                         image, self.capture_session_id)
                     self.logger.info(f"Saved nav image: {saved}")
                 except Exception as ex:
                     self.logger.info(ex)
-                
+
                 self._last_capture_time = time.time()
-            
+
     def spinner(self):
+        # Open Rosmaster on first tick. This guarantees only the spun
+        # instance owns the yaboom serial port and IMU receive thread.
+        self._ensure_hardware_started()
+
         self.get_imu_data()
-        
+
         # Only submit if not already capturing
         if not self._is_capturing:
             if self.nav_capture and time.time() - self._last_capture_time > settings.nav_capture_frequency_seconds:
                 self._is_capturing = True
                 future = self._executor.submit(self._capture_wrapper)
                 future.add_done_callback(lambda f: setattr(self, '_is_capturing', False))
-        
-        self.logger.debug(f"motion: {self._bot.get_motion_data()}")
+
+        if self._bot is not None:
+            self.logger.debug(f"motion: {self._bot.get_motion_data()}")
 
     def get_stats(self):
         return f"""
@@ -239,8 +270,9 @@ class Controller(BaseNode):
         self.logger.info("Stopping controller")
         self.cmd_vel = Twist()
         self.prev_cmd_vel = Twist()
-        self._bot.set_motor(0, 0, 0, 0)
-        self.logger.info(self._bot.get_motion_data())
+        if self._bot is not None:
+            self._bot.set_motor(0, 0, 0, 0)
+            self.logger.info(self._bot.get_motion_data())
         self.trajectory = VehicleTrajectory(VehicleDirection.STATIONARY, 0.0)
 
     def _apply_nav_request(self, payload: NavRequest):
@@ -254,9 +286,17 @@ class Controller(BaseNode):
             self.logger.info("cmd_vel is zero, stopping")
             self.stop()
             return
-        
+
         if cmd_vel == self.prev_cmd_vel:
             self.logger.info("cmd_vel is the same as previous, skipping")
+            return
+
+        # Guard against cmd_vel arriving before the hardware is open. This
+        # happens on the non-spun instance (it still receives cmd_vel signals
+        # via the shared signal bus) or on the spun instance during the brief
+        # window before its first spinner() tick.
+        if self._bot is None:
+            self.logger.debug("cmd_vel received before Rosmaster started; ignoring")
             return
 
         self.prev_cmd_vel = self.cmd_vel.copy()
@@ -282,9 +322,11 @@ class Controller(BaseNode):
         self.logger.debug(f"Scaled CMD Vel: (x: {scaled.linear.x},y:{scaled.linear.y}, z:{scaled.angular.z}")
         self.logger.info(f"Trajectory: direction={self.trajectory.direction}, magnitude={self.trajectory.magnitude}, degrees_per_sec={self.trajectory.degrees_per_sec}")
         self.logger.debug(f"Motor Power: {power}")
-    
+
 
     def _reset_nav(self):
+        if self._bot is None:
+            return
         self.nav_delta = 0
         self.nav_delta_target = 0
         self.nav_yaw = self._bot.get_imu_attitude_data()[2]
@@ -292,10 +334,14 @@ class Controller(BaseNode):
         self._bot.set_car_motion(0, 0, 0)
 
     def _start_nav(self):
+        if self._bot is None:
+            return
         self.nav_delta = 0
         self.nav_delta_target = 0
         self.nav_yaw = self._bot.get_imu_attitude_data()[2]
         self.nav_start_time = time.time()
 
     def shutdown(self):
-        self.stop()
+        # Only the spun instance ever started hardware; other instance is a no-op.
+        if self._hardware_started:
+            self.stop()

@@ -14,6 +14,7 @@ class Topics:
     pico_sensors = signal('pico_sensors')
     nav_capture = signal('nav_capture')
     detections = signal('detections')
+    lidar = signal("lidar")
     # Seek control travels as signals (not direct method calls) so it reaches the
     # spun ObjectSeeker even though the module is instantiated twice -- mirrors how
     # `autodrive` is toggled. See test/test_object_seeker_signal.py.

@@ -108,20 +108,24 @@ class AutoDriver(BaseNode):
         return os.path.isfile(self.model_file)
 
     @property
-    def tof_prediction(self):
+    def tof_prediction(self) -> Direction:
         # return Direction.FORWARD
-        threshhold = 180
+        avoid = 300
+        
+        
 
         left = self.tof.get(0, 9999)
-        right = self.tof.get(1, 9999)
+        forward = self.tof.get(1, 9999)
+        right = self.tof.get(2, 9999)
 
-        if (left >= threshhold and right >= threshhold) or (left == right):
+        if forward > avoid:
             return Direction.FORWARD
-
+        
         if left < right:
             return Direction.RIGHT
         else:
             return Direction.LEFT
+        
 
     def _create_model(self):
         """
@@ -314,6 +318,51 @@ class TernaryObstacleAvoider(AutoDriver):
         self.direction = Direction.FORWARD
 
     def predict(self, input) -> Twist:
+        if DEBUG:
+            print("Making ternary prediction...")
+
+        cmd = Twist()
+
+        if not self.is_active:
+            return cmd
+
+
+        tof = self.tof_prediction
+
+        self.logger.info(
+            "tof: {self.tof_prediction}"
+        )
+
+        if tof == Direction.FORWARD:
+            cmd.linear.x = (
+                    settings.autodrive_linear
+                )  
+            cmd.angular.z = 0.0
+            cmd.linear.y = 0.0
+            
+        elif tof == Direction.STRAFE_LEFT:
+                cmd.linear.x = settings.autodrive_linear * 3 / 4
+                cmd.linear.y = settings.autodrive_linear * 3 / 4
+        elif tof == Direction.STRAFE_LEFT:
+                cmd.linear.x = settings.autodrive_linear * 3 / 4
+                cmd.linear.y = settings.autodrive_linear * -3 / 4
+        elif tof == Direction.LEFT:
+            cmd.linear.x = 0.0
+            cmd.linear.y = 0.0
+            cmd.angular.z = (
+                settings.autodrive_angular
+            )
+        elif tof == Direction.RIGHT:
+            cmd.linear.x = 0.0
+            cmd.linear.y = 0.0
+            cmd.angular.z = (
+                -settings.autodrive_angular
+            )
+
+        self.logger.debug("autodrive:", cmd)
+        return cmd
+    
+    def predict_full(self, input) -> Twist:
         if DEBUG:
             print("Making ternary prediction...")
 

@@ -15,7 +15,7 @@ from felix.motion.joystick import Joystick, JoystickRequest
 from felix.agents.video_agent import VideoStream
 
 from felix.nodes import (
-    Controller, PicoSensors
+    Controller
 )
 from felix.nodes.robot import Robot
 from felix.settings import settings
@@ -33,8 +33,11 @@ class AppState:
     seek_active: bool = False
     seek_target: str = "person"
 
-from felix.nodes.autodriver import TernaryObstacleAvoider
-autodrive = TernaryObstacleAvoider()
+from felix.nodes.lidar_sensor import LidarSensor
+from felix.nodes.autodrive_lidar import LidarAutoDriver
+
+lidar_sensor = LidarSensor(device_path='/dev/rplidar', forward_offset_deg=0.0)
+autodrive = LidarAutoDriver()
 
 # if settings.TRAINING.mode == "ternary":
 #    from felix.nodes.autodriver import TernaryObstacleAvoider
@@ -47,7 +50,6 @@ from felix.nodes.detector import Detector
 from felix.nodes.object_seeker import ObjectSeeker
 
 controller = Controller(frequency=30)
-pico = PicoSensors()
 robot = Robot()
 detector = Detector(frequency=8)  # perception only: publishes Topics.detections
 object_seeker = ObjectSeeker(target_label="person")  # detections -> cmd_vel
@@ -71,9 +73,9 @@ async def _start_background_nodes():
     _video_thread = threading.Thread(target=video_stream.run, daemon=True)
     _video_thread.start()
     for coro in (
-        pico.spin(10),
         controller.spin(),
-        autodrive.spin(20),
+        lidar_sensor.spin(5),
+        autodrive.spin(10),
         detector.spin(8),
         object_seeker.spin(8),
     ):

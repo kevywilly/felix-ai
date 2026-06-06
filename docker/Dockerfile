@@ -28,6 +28,8 @@ RUN pip3 install --no-cache-dir \
       adafruit-blinka \
       adafruit-circuitpython-vl53l0x
 
+RUN pip3 install --no-cache-dir pyrplidar
+
 # Web + teleop server
 RUN pip3 install --no-cache-dir \
       flask flask-cors flask-sock \
@@ -40,6 +42,10 @@ RUN pip3 install --no-cache-dir \
       aiohttp \
       av
 
+RUN pip3 install --no-cache-dir \
+      pytest \
+      pytest-asyncio \
+      av
 # The ultralytics jetpack base ships opencv-python-headless in
 # /usr/local/lib, which shadows JetPack's GStreamer-enabled cv2 in
 # /usr/lib. A headless wheel has GStreamer:NO, so cv2.VideoCapture(...,

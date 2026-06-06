@@ -135,6 +135,9 @@ class AppSettings:
         self.SEEK_LOST_TIMEOUT = seek.get('lost_timeout', 0.5)
         self.SEEK_TOF_STOP_MM = self.TOF_THRESHOLD
         self.SEEK_TOF_SLOW_MM = self.TOF_THRESHOLD + seek.get('tof_slow_margin_mm', 300)
+        self.SEEK_LIDAR_STOP_MM = seek.get('lidar_stop_mm', 300)
+        self.SEEK_LIDAR_SLOW_MM = seek.get('lidar_slow_mm', 700)
+        self.SEEK_LIDAR_STALE_SEC = seek.get('lidar_stale_sec', 0.5)
         
         self.DEBUG: bool = config.get('debug', False)
 

@@ -56,6 +56,9 @@ sudo modprobe ch34x
 # motor controller
 echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE:="0777", SYMLINK+="myserial"' | sudo tee /etc/udev/rules.d/99-myserial.rules
 
+# rplidar
+echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="0001", MODE:="0777", SYMLINK+="rplidar"' | sudo tee /etc/udev/rules.d/99-rplidar.rules
+
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 
