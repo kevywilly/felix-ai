@@ -21,7 +21,12 @@ tof:
 nav_capture_frequency_seconds: 0.5
 autodrive:
   linear: 0.32
-  angular: 1.0
+  # In-place turn rate. Trade-off: too low (~1.0 -> 25% motor) barely overcomes
+  # 4-wheel mecanum scrub; too high (2.0 -> ~115 deg/s) over-rotates past the
+  # opening between scans at the 10Hz decision rate. 1.2 (~30% motor, ~69 deg/s,
+  # ~7 deg per tick) breaks scrub while leaving the forward cone enough ticks to
+  # catch the opening and stop. Tune here first if it over/under-shoots.
+  angular: 1.2
   # Output smoothing (units/sec) via the shared TwistSmoother. High = near-instant
   # (default, ~unchanged behaviour); lower these for a gentler ride. Stops snap.
   slew_linear: 3.0

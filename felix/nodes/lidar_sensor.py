@@ -32,7 +32,10 @@ class Direction(str, Enum):
 
 
 SECTORS = {
-    Direction.FORWARD:      {'center':   0, 'half_width': 20},
+    # FORWARD half_width meets the RIGHT/LEFT sectors (centered +-45, hw 15 ->
+    # start at 30) with no gap, so a wall approached at a slight angle can't slip
+    # into a blind wedge and read as "clear" while we drive into it.
+    Direction.FORWARD:      {'center':   0, 'half_width': 30},
     Direction.RIGHT:        {'center':  45, 'half_width': 15},
     Direction.STRAFE_RIGHT: {'center':  90, 'half_width': 25},
     Direction.STRAFE_LEFT:  {'center': 270, 'half_width': 25},
@@ -124,12 +127,30 @@ class LidarSensor(BaseNode):
         self._last_rate_check = time.monotonic()
         self._stale_warned = False
 
+        # Motor/reader enable gate, toggled from the UI via Topics.lidar_motor.
+        # Default ON. When cleared, the reader loop exits and the supervisor
+        # closes the device (which spins the motor down) and parks until re-set.
+        # We cannot just call set_motor_pwm(0) mid-scan: the scan generator would
+        # block forever waiting for measurements that stop arriving.
+        self._motor_enabled = threading.Event()
+        self._motor_enabled.set()
+        Topics.lidar_motor.connect(self._on_lidar_motor)
+
         # IMPORTANT: do NOT open the device or spawn the reader here.
         # NiceGUI re-imports this module in its server process, which
         # instantiates LidarSensor twice. Only the instance whose spin()
         # is actually awaited by on_startup should touch the hardware.
         # See _ensure_started() below.
         self.logger.info("LidarSensor instance created (reader deferred until spin)")
+
+    def _on_lidar_motor(self, sender, payload: bool = True):
+        """UI toggle for the spin motor. payload True=on, False=off."""
+        if payload:
+            self._motor_enabled.set()
+            self.logger.info("Lidar motor enabled (will spin up on next supervisor pass)")
+        else:
+            self._motor_enabled.clear()
+            self.logger.info("Lidar motor disabled (reader will stop and motor spin down)")
 
     def _ensure_started(self):
         """Spawn the reader thread on first spinner() call. Called only on
@@ -182,6 +203,14 @@ class LidarSensor(BaseNode):
     def _reader_supervisor(self):
         consecutive_fails = 0
         while not self._reader_stop.is_set():
+            # Pause point: when the motor is disabled from the UI, keep the
+            # device closed (motor off) and wait. The timeout lets us notice a
+            # _reader_stop (shutdown) or re-enable promptly.
+            if not self._motor_enabled.is_set():
+                self._close_device()
+                self._motor_enabled.wait(timeout=0.5)
+                continue
+
             if not self._open_device():
                 consecutive_fails += 1
                 if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
@@ -245,7 +274,11 @@ class LidarSensor(BaseNode):
         low_count_warnings = 0
 
         for measurement in scan_generator:
-            if self._reader_stop.is_set():
+            # Break while measurements are still flowing (motor still spinning),
+            # so the loop can exit cleanly; the supervisor's finally then closes
+            # the device and spins the motor down. Checking the flag here (not
+            # after stopping the motor) is what avoids the generator deadlock.
+            if self._reader_stop.is_set() or not self._motor_enabled.is_set():
                 break
 
             # start_flag marks the first measurement of a new rotation.
@@ -334,6 +367,9 @@ class LidarSensor(BaseNode):
         if not self._started:
             return  # nothing to clean up on the non-spun instance
         self._reader_stop.set()
+        # Wake the supervisor if it's parked in the motor-disabled wait so it
+        # sees _reader_stop and exits promptly instead of after the timeout.
+        self._motor_enabled.set()
         if self._reader_thread is not None:
             self._reader_thread.join(timeout=3.0)
         self._close_device()

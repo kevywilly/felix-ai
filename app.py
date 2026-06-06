@@ -32,6 +32,7 @@ class AppState:
     nav_capture: bool = False
     seek_active: bool = False
     seek_target: str = "person"
+    lidar_motor_active: bool = True  # RPLidar spins by default on startup
 
 from felix.nodes.lidar_sensor import LidarSensor
 from felix.nodes.autodrive_lidar import LidarAutoDriver
@@ -123,7 +124,11 @@ def handle_autodrive(e):
     Topics.autodrive.send("felix")
     if not state.autodrive_active:
         time.sleep(1)
-        controller.stop()
+        # Guard the spinner-vs-deactivate race: a cmd_vel tick already in flight
+        # when we toggled off could have re-armed the motors after the node's
+        # stop. Topics.stop reaches the spun controller; controller.stop() here
+        # would only hit the non-spun UI-side instance.
+        Topics.stop.send("felix")
     drive_mode_buttons.refresh()
 
 def handle_seek(e):
@@ -140,6 +145,14 @@ def handle_seek(e):
     if not state.seek_active:
         time.sleep(1)
         controller.stop()
+    drive_mode_buttons.refresh()
+
+def handle_lidar_motor(e):
+    state.lidar_motor_active = not state.lidar_motor_active
+    # Signal reaches the spun LidarSensor (the UI-side copy is never spun).
+    # Disabling stops the reader, so autodrive readings go stale and the robot
+    # safely halts; re-enabling spins the motor back up.
+    Topics.lidar_motor.send("felix", payload=state.lidar_motor_active)
     drive_mode_buttons.refresh()
 
 def handle_seek_target(label: str):
@@ -191,6 +204,9 @@ def drive_mode_buttons():
                 ).style('flex: 1 1 0; min-width: 120px; height: 40px;')
         ui.button(f'Seek {"On" if state.seek_active else "Off"}',
                 on_click=lambda e: handle_seek(e)
+                ).style('flex: 1 1 0; min-width: 120px; height: 40px;')
+        ui.button(f'Lidar {"On" if state.lidar_motor_active else "Off"}',
+                on_click=lambda e: handle_lidar_motor(e)
                 ).style('flex: 1 1 0; min-width: 120px; height: 40px;')
 
 def power_slider():
