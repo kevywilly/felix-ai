@@ -48,7 +48,10 @@ if [ $ARCH = "aarch64" ]; then
 
 	#--volume $ROOT/data:/data \
 	#$SUDO docker run --runtime nvidia -it --rm --network host -e ROBOT=${ROBOT} \
-	$SUDO docker run --runtime nvidia -it --rm --network host -e ROBOT=${ROBOT} \
+	$SUDO docker run --runtime nvidia -it --rm \
+		--network host --ipc host \
+		-e ROBOT=${ROBOT} \
+		-e ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-42} \
 		--name felix-ai \
 		--volume /tmp/argus_socket:/tmp/argus_socket \
 		--volume /etc/enctune.conf:/etc/enctune.conf \
@@ -57,13 +60,13 @@ if [ $ARCH = "aarch64" ]; then
 		--device /dev/gpiochip0 \
 		--device /dev/gpiochip1 \
 		--volume ${HOME}/felix-ai:/felix-ai \
+		--volume ${HOME}/felix-ai-ros:/felix-ai-ros \
 		--volume ${HOME}/data:/data \
 		--volume ${HOME}/.claude-felix:/.claude \
 		--device /dev/snd \
 		--device /dev/bus/usb \
 		--device /dev/rplidar \
 		--device /dev/myserial \
-		--device /dev/mypico \
 		--device /dev/i2c-1 \
 		--device /dev/i2c-2 \
 		--device /dev/i2c-7 \
